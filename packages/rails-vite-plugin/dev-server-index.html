@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rails Vite</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8f9fa;
+        color: #374151;
+        line-height: 1.6;
+        padding: 1.5rem;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #111827;
+          color: #9ca3af;
+        }
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow:
+          0 1px 3px rgba(0, 0, 0, 0.06),
+          0 20px 40px rgba(0, 0, 0, 0.07);
+        max-width: 520px;
+        width: 100%;
+        padding: 2.5rem 2rem;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .card {
+          background: #1f2937;
+          box-shadow:
+            0 1px 3px rgba(0, 0, 0, 0.2),
+            0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+      }
+
+      .logos {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1.25rem;
+        margin-bottom: 2rem;
+      }
+
+      .logos svg {
+        flex-shrink: 0;
+      }
+
+      .plus {
+        color: #9ca3af;
+        font-size: 1.25rem;
+        font-weight: 300;
+        user-select: none;
+      }
+
+      .content p {
+        margin-bottom: 1rem;
+        font-size: 0.9375rem;
+      }
+
+      .content p:last-child {
+        margin-bottom: 0;
+      }
+
+      .divider {
+        border: none;
+        border-top: 1px solid #e5e7eb;
+        margin: 1.5rem 0;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .divider {
+          border-top-color: #374151;
+        }
+      }
+
+      .hint {
+        font-size: 0.8125rem;
+        color: #6b7280;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .hint {
+          color: #6b7280;
+        }
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+          "Liberation Mono", monospace;
+        font-size: 0.8125rem;
+        background: #f3f4f6;
+        color: #1f2937;
+        padding: 0.15em 0.4em;
+        border-radius: 4px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        code {
+          background: #374151;
+          color: #e5e7eb;
+        }
+      }
+
+      a {
+        color: #cc342d;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      a:hover {
+        color: #a02a24;
+        text-decoration: underline;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        a {
+          color: #ef4444;
+        }
+
+        a:hover {
+          color: #f87171;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logos">
+        <a href="https://rubyonrails.org" aria-label="Ruby on Rails">
+          <svg width="42" height="42" fill="#D30001" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Ruby on Rails</title><path d="M.741 19.365h8.36s-1.598-7.291 3.693-10.243l.134-.066c1.286-.637 4.907-2.431 10.702 1.854.19-.159.37-.286.37-.286s-5.503-5.492-11.63-4.878c-3.079.275-6.867 3.079-9.09 6.783C1.058 16.233.741 19.365.741 19.365Zm8.804-.783a10.682 10.682 0 0 1-.127-1.333l1.143.412c.063.498.159.963.254 1.376l-1.27-.455Zm-7.799-4.317L.529 13.82c-.201.455-.423.984-.529 1.27l1.217.444c.137-.359.36-.878.529-1.269Zm7.831.296.857.677c.042-.413.116-.825.222-1.238l-.762-.603c-.137.391-.233.783-.317 1.164Zm2.042-2.646-.508-.762c.191-.243.413-.486.656-.709l.476.72a5.958 5.958 0 0 0-.624.751ZM4.19 8.878l.752.656c-.254.265-.498.551-.72.836l-.815-.698c.244-.265.508-.529.783-.794Zm9.799 1.027-.243-.73c.265-.117.571-.233.931-.339l.233.698a6.82 6.82 0 0 0-.921.371Zm3.122-.656.042-.667c.339.021.688.064 1.048.138l-.042.656a5.859 5.859 0 0 0-1.048-.127ZM8.942 6.392l-.476-.731c-.265.138-.54.286-.826.455l.487.741c.275-.169.54-.328.815-.465Zm9.217-.053.042-.709c-.095-.053-.36-.18-1.026-.371l-.043.699c.349.116.688.243 1.027.381ZM13.238 5.28h.106l-.212-.645c-.328 0-.666.021-1.016.063l.201.625a8.87 8.87 0 0 1 .921-.043Z"/></svg>
+        </a>
+        <span class="plus">+</span>
+        <a href="https://vite.dev" aria-label="Vite">
+          <svg width="38" height="38" viewBox="0 0 410 404" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M399.641 59.525 215.643 388.545c-3.816 6.826-13.638 6.994-17.69.304L7.876 59.221c-4.456-7.348 2.596-15.985 10.707-13.608l187.033 54.783c1.318.386 2.706.395 4.028.025L393.244 45.9c8.124-2.32 15.053 6.396 10.397 13.625Z" fill="url(#vite-a)"/>
+            <path d="M293.573 1.34 163.46 28.672c-2.2.462-3.834 2.347-3.967 4.577l-8.624 144.716c-.178 2.991 2.798 5.224 5.667 4.254l25.488-8.625c3.14-1.063 6.209 1.589 5.67 4.9l-7.828 48.08c-.555 3.412 2.72 6.085 5.882 4.8l19.6-7.952c3.16-1.282 6.433 1.39 5.878 4.8l-12.44 76.427c-.857 5.265 5.727 8.142 8.808 3.85l2.06-2.867L341.3 103.14c1.665-3.2-1.17-6.855-4.633-5.975l-26.357 6.698c-3.28.834-6.227-2.18-5.286-5.406L331.34 7.21c.95-3.25-2.065-6.296-5.3-5.358l-32.467 8.488Z" fill="url(#vite-b)"/>
+            <defs>
+              <linearGradient id="vite-a" x1="6.715" y1="32.086" x2="235.479" y2="344.885" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#41D1FF"/>
+                <stop offset="1" stop-color="#BD34FE"/>
+              </linearGradient>
+              <linearGradient id="vite-b" x1="194.651" y1="8.818" x2="236.076" y2="292.989" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#FFBD4F"/>
+                <stop offset="1" stop-color="#FF9640"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </a>
+      </div>
+      <div class="content">
+        <p>This is the <strong>Vite development server</strong> providing Hot Module Replacement for your Rails application.</p>
+        <p>Your Rails app is running on a different port. Start it with:</p>
+        <p><code>bin/dev</code></p>
+        <hr class="divider">
+        <p class="hint">
+          Need help? Read the <a href="https://github.com/skryukov/rails_vite#readme">docs &rarr;</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

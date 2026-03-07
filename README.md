@@ -1,0 +1,271 @@
+# RailsVite
+
+Vite integration for Rails, inspired by [Laravel's Vite plugin](https://laravel.com/docs/12.x/vite). No proxy, no config duplication, no magic.
+
+## How It Works
+
+**Development:** The Vite plugin writes `tmp/rails-vite.json` with the dev server URL. The Rails helper reads it and emits `<script>` tags pointing directly at Vite. The browser talks to Vite — Puma never touches your assets.
+
+**Production:** `vite build` outputs fingerprinted assets to `public/vite/` with a standard Vite manifest. The Rails helper reads the manifest and emits the correct tags.
+
+No Rack proxy. No `config/vite.json`. No version-locked packages.
+
+## Quick Start
+
+Add to your Gemfile:
+
+```ruby
+gem "rails_vite"
+```
+
+Run the install generator:
+
+```bash
+bundle install
+bin/rails generate rails_vite:install
+```
+
+This creates `vite.config.ts`, installs dependencies, and updates your layout.
+
+Start development:
+
+```bash
+bin/dev
+```
+
+## Usage
+
+In your layout:
+
+```erb
+<%= vite_tags "application.js" %>
+```
+
+Short names are automatically prefixed with `sourceDir` (default: `app/javascript`). Paths containing `/` are used as-is.
+
+**Development output** (when `tmp/rails-vite.json` exists):
+
+```html
+<script src="http://localhost:5173/@vite/client" type="module"></script>
+<script src="http://localhost:5173/app/javascript/application.js" type="module"></script>
+```
+
+**Production output** (reads manifest):
+
+```html
+<link rel="modulepreload" href="/vite/assets/vendor-b3c4d5e6.js" />
+<script src="/vite/assets/application-a1b2c3d4.js" type="module"></script>
+<link rel="stylesheet" href="/vite/assets/application-x9y8z7w6.css" />
+```
+
+### Helpers
+
+| Helper | Purpose |
+|--------|---------|
+| `vite_tags(*entries, nonce: nil)` | Emits script, stylesheet, and modulepreload tags |
+| `vite_asset_path(name)` | Returns the fingerprinted path from the manifest |
+| `vite_image_tag(name, **options)` | Image tag with manifest-resolved src |
+
+### CSS Entry Points
+
+CSS files are detected by extension and emit `<link rel="stylesheet">`:
+
+```erb
+<%= vite_tags "application.css" %>
+```
+
+### CSP Nonces
+
+```erb
+<%= vite_tags "application.js", nonce: content_security_policy_nonce %>
+```
+
+### Asset Discovery (Images, Fonts)
+
+Use `import.meta.glob` in your entry point to include assets in the Vite manifest:
+
+```js
+// app/javascript/application.js
+import.meta.glob(['../assets/images/**']);
+```
+
+Then reference them in views:
+
+```erb
+<%= vite_image_tag "app/assets/images/logo.png", alt: "Logo" %>
+```
+
+## Vite Config
+
+The install generator creates a minimal `vite.config.ts`:
+
+```typescript
+import { defineConfig } from 'vite';
+import rails from 'rails-vite-plugin';
+
+export default defineConfig({
+  plugins: [
+    rails(),
+  ],
+});
+```
+
+### Plugin Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `input` | auto-detected | Entry point(s). Auto-detects `application.{js,ts,jsx,tsx}` in `sourceDir` |
+| `sourceDir` | `'app/javascript'` | Source directory. Short names are prefixed with this. Also sets the `@` import alias |
+| `ssr` | — | SSR entry point |
+| `ssrOutputDirectory` | `'ssr'` | SSR output directory |
+| `devMetaFile` | `'tmp/rails-vite.json'` | Dev metadata file path |
+| `buildDirectory` | `'vite'` | Build output subdirectory inside `public/` |
+| `publicDirectory` | `'public'` | Public directory |
+| `refresh` | `true` | Paths to watch for full-page reload. `true` watches `app/views/**` and `app/helpers/**` |
+
+### Multiple Entry Points
+
+```typescript
+rails({
+  input: ['application.js', 'admin.js'],
+})
+```
+
+```erb
+<!-- In application layout -->
+<%= vite_tags "application.js" %>
+
+<!-- In admin layout -->
+<%= vite_tags "admin.js" %>
+```
+
+### Custom Source Directory
+
+```typescript
+rails({
+  input: ['entrypoints/application.ts', 'entrypoints/admin.ts'],
+  sourceDir: 'app/frontend',
+})
+```
+
+```erb
+<%= vite_tags "entrypoints/application.ts" %>
+```
+
+## Adding Frameworks
+
+### React
+
+```bash
+npm install -D @vitejs/plugin-react
+```
+
+```typescript
+import { defineConfig } from 'vite';
+import rails from 'rails-vite-plugin';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    rails(),
+  ],
+});
+```
+
+The React Refresh preamble is injected automatically when `@vitejs/plugin-react` is detected — no manual setup needed.
+
+### Vue
+
+```bash
+npm install -D @vitejs/plugin-vue
+```
+
+```typescript
+import { defineConfig } from 'vite';
+import rails from 'rails-vite-plugin';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+  plugins: [
+    vue(),
+    rails(),
+  ],
+});
+```
+
+## SSR
+
+Set `ssr` to the entry point used for server-side rendering. When you run `npx vite build --ssr`, the plugin uses this as the input and outputs to the `ssrOutputDirectory` (default: `ssr/`).
+
+```typescript
+rails({
+  ssr: 'ssr.tsx',
+})
+```
+
+Build and run:
+
+```bash
+npx vite build && npx vite build --ssr
+node ssr/ssr.js
+```
+
+## Auto Build
+
+When the Vite dev server is not running, rails_vite automatically rebuilds assets on the first request if sources have changed. This is useful for system tests and quick checks without running `bin/dev`.
+
+Disable it:
+
+```ruby
+# config/initializers/rails_vite.rb
+Rails.application.config.rails_vite.auto_build = false
+```
+
+By default, auto build is enabled in development and test (`Rails.env.local?`).
+
+Note: for parallel test runners, disable auto build and use `rake vite:build` before the suite instead.
+
+## Testing the Build
+
+To verify your production build works in development:
+
+```bash
+rake vite:build         # build assets
+bin/rails s             # start Rails without Vite dev server
+```
+
+Without the Vite dev server running (no `tmp/rails-vite.json`), Rails serves built assets from `public/vite/`. To switch back to dev mode, start Vite again — the dev metadata takes priority.
+
+Clean up built assets with `rake vite:clobber`.
+
+## Custom Paths
+
+If you override `build.outDir` in `vite.config.ts`, tell the gem where to find things:
+
+```ruby
+# config/initializers/rails_vite.rb
+Rails.application.config.rails_vite.manifest_path = Rails.root.join("public/custom/manifest.json")
+Rails.application.config.rails_vite.asset_prefix = "/custom"
+```
+
+Defaults match the plugin defaults — no config needed if you follow conventions.
+
+## Rake Tasks
+
+| Task | Description |
+|------|-------------|
+| `rake vite:build` | Build assets for production |
+| `rake vite:install` | Install JavaScript dependencies |
+| `rake vite:clobber` | Remove `public/vite/` |
+
+`vite:build` hooks into `assets:precompile` and `test:prepare` automatically. Skip with `SKIP_VITE_BUILD=1`.
+
+
+## Contributing
+
+Bug reports and pull requests are welcome on GitHub at https://github.com/skryukov/rails_vite.
+
+## License
+
+The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).

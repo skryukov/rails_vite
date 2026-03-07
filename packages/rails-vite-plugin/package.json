@@ -1,0 +1,58 @@
+{
+  "name": "rails-vite-plugin",
+  "version": "0.1.0",
+  "description": "Vite plugin for Rails integration",
+  "author": "Svyatoslav Kryukov <me@skryukov.dev>",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "dev-server-index.html"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "prepublishOnly": "tsc -p tsconfig.build.json"
+  },
+  "peerDependencies": {
+    "vite": ">=5.0.0"
+  },
+  "dependencies": {
+    "picomatch": "^4.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.0.0",
+    "@types/picomatch": "^3.0.0",
+    "eslint": "^10.0.2",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.56.1",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  },
+  "keywords": [
+    "vite",
+    "rails",
+    "vite-plugin"
+  ],
+  "homepage": "https://github.com/skryukov/rails_vite",
+  "bugs": "https://github.com/skryukov/rails_vite/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skryukov/rails_vite",
+    "directory": "packages/rails-vite-plugin"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

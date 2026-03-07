@@ -1,0 +1,56 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative "../lib/rails_vite/version"
+
+version = RailsVite::VERSION
+dry_run = ARGV.delete("--dry-run")
+
+# Check for uncommitted changes
+unless `git status --porcelain`.strip.empty?
+  puts "WARNING: You have uncommitted changes!"
+  puts `git status --short`
+  print "Continue anyway? [y/N] "
+  exit 1 unless gets&.strip&.downcase == "y"
+  puts
+end
+
+puts "#{dry_run ? "[DRY RUN] " : ""}Publishing rails_vite v#{version}"
+puts
+
+# Run tests
+puts "==> Running Ruby tests..."
+system("bundle", "exec", "rake", exception: true)
+
+puts
+puts "==> Running JS tests..."
+Dir.chdir("packages/rails-vite-plugin") do
+  system("npm", "test", exception: true)
+end
+
+# Publish gem
+puts
+puts "==> Publishing gem to RubyGems..."
+system("gem", "build", "rails_vite.gemspec", exception: true)
+if dry_run
+  puts "gem push rails_vite-#{version}.gem (skipped)"
+else
+  system("gem", "push", "rails_vite-#{version}.gem", exception: true)
+end
+File.delete("rails_vite-#{version}.gem")
+
+# Publish npm package
+puts
+puts "==> Publishing npm package..."
+Dir.chdir("packages/rails-vite-plugin") do
+  system("npm", "run", "build", exception: true)
+  if dry_run
+    puts "npm publish --access public (skipped)"
+  else
+    npm_tag = version.include?("beta") ? ["--tag", "beta"] : []
+    system("npm", "publish", "--access", "public", *npm_tag, exception: true)
+  end
+end
+
+puts
+puts "#{dry_run ? "[DRY RUN] " : ""}Done! Published rails_vite v#{version}"
