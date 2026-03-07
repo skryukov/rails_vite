@@ -36,7 +36,8 @@ let exitHandlersBound = false
 
 export default function rails(options: RailsViteOptions = {}): Plugin {
   const sourceDir = options.sourceDir ?? 'app/javascript'
-  const input = options.input ?? detectEntrypoint(sourceDir)
+  const entrypointsDir = options.input === undefined ? detectEntrypointsDir(sourceDir) : null
+  const input = options.input ?? (entrypointsDir ? discoverEntrypointInputs(sourceDir, entrypointsDir) : detectEntrypoint(sourceDir))
   const publicDirectory = options.publicDirectory ?? 'public'
   const buildDirectory = options.buildDirectory ?? 'vite'
   const devMetaPath = options.devMetaFile ?? path.join('tmp', 'rails-vite.json')
@@ -103,7 +104,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
       const outDir = resolvedConfig.build.outDir
       fs.writeFileSync(
         path.join(outDir, 'rails-vite.json'),
-        JSON.stringify({ sourceDir })
+        JSON.stringify(entrypointsDir ? { sourceDir, entrypointsDir } : { sourceDir })
       )
     },
 
@@ -116,6 +117,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
           resolvedConfig.server.origin = devServerUrl
 
           const meta: Record<string, unknown> = { url: devServerUrl, sourceDir }
+          if (entrypointsDir) meta.entrypointsDir = entrypointsDir
           if (reactRefresh) meta.reactRefresh = true
           fs.writeFileSync(devMetaPath, JSON.stringify(meta))
 
@@ -196,14 +198,19 @@ function prefixWithSourceDir(entry: string, sourceDir: string): string {
 
 const entrypointExtensions = /\.(mjs|js|mts|ts|jsx|tsx|css|scss|sass|less|styl|pcss)$/
 
-function detectEntrypoint(sourceDir: string): string | string[] {
+function detectEntrypointsDir(sourceDir: string): string | null {
   const entrypointsDir = path.join(sourceDir, 'entrypoints')
-  if (fs.existsSync(entrypointsDir)) {
-    return discoverEntrypoints(entrypointsDir).map(
-      (entry) => `entrypoints/${entry}`
-    )
-  }
+  return fs.existsSync(entrypointsDir) ? 'entrypoints' : null
+}
 
+function discoverEntrypointInputs(sourceDir: string, entrypointsDir: string): string[] {
+  const absDir = path.join(sourceDir, entrypointsDir)
+  return discoverEntrypoints(absDir).map(
+    (entry) => `${entrypointsDir}/${entry}`
+  )
+}
+
+function detectEntrypoint(sourceDir: string): string {
   for (const ext of ['.js', '.mjs', '.ts', '.mts', '.jsx', '.tsx']) {
     const candidate = path.join(sourceDir, `application${ext}`)
     if (fs.existsSync(candidate)) {

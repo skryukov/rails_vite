@@ -207,6 +207,48 @@ class TagHelperTest < Minitest::Test
     assert_match %r{src="/vite/assets/app-rel123.js"}, html
   end
 
+  # entrypointsDir resolution tests
+
+  def test_vite_tags_entrypoints_dir_production
+    File.write(File.join(File.dirname(@manifest_path), "rails-vite.json"),
+      '{"sourceDir":"app/frontend","entrypointsDir":"entrypoints"}')
+
+    custom_manifest = {
+      "app/frontend/entrypoints/application.js" => {
+        "file" => "assets/application-ep123.js",
+        "isEntry" => true, "css" => [], "imports" => []
+      },
+      "app/frontend/entrypoints/application.css" => {
+        "file" => "assets/application-ep456.css",
+        "isEntry" => true
+      }
+    }
+    File.write(@manifest_path, JSON.generate(custom_manifest))
+
+    html = vite_stylesheet_tag("application.css", "data-turbo-track": "reload")
+
+    assert_match %r{rel="stylesheet".*href="/vite/assets/application-ep456.css"}, html
+    assert_match %r{data-turbo-track="reload"}, html
+  end
+
+  def test_vite_tags_entrypoints_dir_dev_mode
+    File.write(File.join(@dir, "rails-vite.json"),
+      '{"url":"http://localhost:5173","sourceDir":"app/frontend","entrypointsDir":"entrypoints"}')
+
+    html = vite_tags("application.js")
+
+    assert_match %r{src="http://localhost:5173/app/frontend/entrypoints/application.js"}, html
+  end
+
+  def test_vite_tags_entrypoints_dir_full_path_not_affected
+    File.write(File.join(File.dirname(@manifest_path), "rails-vite.json"),
+      '{"sourceDir":"app/javascript","entrypointsDir":"entrypoints"}')
+
+    html = vite_tags("app/javascript/application.js")
+
+    assert_match %r{src="/vite/assets/application-a1b2c3d4.js"}, html
+  end
+
   # React refresh preamble tests
 
   def test_vite_tags_dev_mode_with_react_refresh

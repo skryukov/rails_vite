@@ -20,6 +20,10 @@ module RailsVite
       plugin_meta["sourceDir"] || "app/javascript"
     end
 
+    def entrypoints_dir
+      plugin_meta["entrypointsDir"]
+    end
+
     def auto_build?
       return @auto_build if defined?(@auto_build)
       Rails.env.local?

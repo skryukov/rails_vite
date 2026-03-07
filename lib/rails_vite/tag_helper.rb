@@ -4,7 +4,7 @@ module RailsVite
 
     def vite_tags(*entries, nonce: nil, **options)
       config = RailsVite.config
-      resolved = entries.map { |e| resolve_vite_entry(e, config.source_dir) }
+      resolved = entries.map { |e| resolve_vite_entry(e, config.source_dir, config.entrypoints_dir) }
 
       if config.dev_server_running?
         vite_dev_tags(resolved, config.dev_server_url, nonce: nonce, **options)
@@ -103,8 +103,11 @@ module RailsVite
       File.extname(name).empty? ? "#{name}#{ext}" : name
     end
 
-    def resolve_vite_entry(entry, source_dir)
-      entry.start_with?("#{source_dir}/", "/") ? entry : "#{source_dir}/#{entry}"
+    def resolve_vite_entry(entry, source_dir, entrypoints_dir)
+      return entry if entry.start_with?("#{source_dir}/", "/")
+
+      prefix = entrypoints_dir ? "#{source_dir}/#{entrypoints_dir}" : source_dir
+      "#{prefix}/#{entry}"
     end
 
     def vite_asset_url(file)

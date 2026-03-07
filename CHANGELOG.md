@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 ## [Unreleased]
 
+### Fixed
+
+- Short entry names now resolve correctly when using `entrypoints/` directory ([@skryukov])
+
 ## [0.1.1] - 2026-03-08
 
 ### Added
