@@ -21,7 +21,25 @@ vi.mock('fs', async () => {
         if (filePath.endsWith('app/javascript/application.js')) return true
         // Mock: app/frontend/application.ts exists
         if (filePath.endsWith('app/frontend/application.ts')) return true
+        // Mock: app/assets/entrypoints directory exists
+        if (filePath.endsWith('app/assets/entrypoints')) return true
         return actual.existsSync(filePath)
+      },
+      readdirSync: (dir: string, options?: { withFileTypes: boolean }) => {
+        if (dir.endsWith('app/assets/entrypoints') && options?.withFileTypes) {
+          return [
+            { name: 'application.ts', isDirectory: () => false },
+            { name: 'application.css', isDirectory: () => false },
+            { name: 'README.md', isDirectory: () => false },
+            { name: 'admin', isDirectory: () => true },
+          ]
+        }
+        if (dir.endsWith('app/assets/entrypoints/admin') && options?.withFileTypes) {
+          return [
+            { name: 'index.tsx', isDirectory: () => false },
+          ]
+        }
+        return actual.readdirSync(dir, options as Parameters<typeof actual.readdirSync>[1])
       },
     },
   }
@@ -92,6 +110,32 @@ describe('rails-vite-plugin', () => {
       app: 'app/javascript/application.js',
       admin: 'app/javascript/admin/index.js',
     })
+  })
+
+  it('auto-discovers entrypoints directory', () => {
+    const plugin = rails({ sourceDir: 'app/assets' })
+
+    const config = getConfig(plugin)
+    expect(config!.build!.rollupOptions!.input).toEqual([
+      'app/assets/entrypoints/application.ts',
+      'app/assets/entrypoints/application.css',
+      'app/assets/entrypoints/admin/index.tsx',
+    ])
+  })
+
+  it('filters non-entrypoint files from discovery', () => {
+    const plugin = rails({ sourceDir: 'app/assets' })
+
+    const config = getConfig(plugin)
+    const input = config!.build!.rollupOptions!.input as string[]
+    expect(input).not.toContainEqual(expect.stringContaining('README.md'))
+  })
+
+  it('explicit input takes precedence over entrypoints directory', () => {
+    const plugin = rails({ sourceDir: 'app/assets', input: 'custom.js' })
+
+    const config = getConfig(plugin)
+    expect(config!.build!.rollupOptions!.input).toBe('app/assets/custom.js')
   })
 
   // --- Build config defaults ---

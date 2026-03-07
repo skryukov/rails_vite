@@ -150,6 +150,13 @@ class TagHelperTest < Minitest::Test
     assert_match %r{rel="stylesheet".*href="/vite/assets/application-x9y8z7w6.css"}, html
   end
 
+  def test_vite_tags_extensionless_production
+    html = vite_tags("application")
+
+    assert_match %r{src="/vite/assets/application-a1b2c3d4.js"}, html
+    assert_match %r{rel="stylesheet".*href="/vite/assets/application-x9y8z7w6.css"}, html
+  end
+
   def test_vite_tags_short_name_dev_mode
     File.write(File.join(@dir, "rails-vite.json"), '{"url":"http://localhost:5173","sourceDir":"app/javascript"}')
 
@@ -299,6 +306,30 @@ class TagHelperTest < Minitest::Test
 
     vendor_preloads = html.scan(%r{rel="modulepreload".*?href="/vite/assets/vendor-b3c4d5e6.js"})
     assert_equal 1, vendor_preloads.size, "Shared import should only be preloaded once"
+  end
+
+  # Custom HTML attributes tests
+
+  def test_vite_tags_production_with_custom_attributes
+    html = vite_tags("app/javascript/application.js", "data-turbo-track": "reload")
+
+    assert_match %r{<script.*data-turbo-track="reload"}, html
+    assert_match %r{rel="stylesheet".*data-turbo-track="reload"}, html
+  end
+
+  def test_vite_tags_css_entry_with_custom_attributes
+    html = vite_tags("app/javascript/admin.css", media: "all", "data-turbo-track": "reload")
+
+    assert_match %r{media="all"}, html
+    assert_match %r{data-turbo-track="reload"}, html
+  end
+
+  def test_vite_tags_dev_mode_with_custom_attributes
+    File.write(File.join(@dir, "rails-vite.json"), '{"url":"http://localhost:5173","sourceDir":"app/javascript"}')
+
+    html = vite_tags("app/javascript/application.js", "data-turbo-track": "reload")
+
+    assert_match %r{src="http://localhost:5173/app/javascript/application.js".*data-turbo-track="reload"}, html
   end
 
   # Error tests

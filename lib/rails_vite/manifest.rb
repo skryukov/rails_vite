@@ -6,9 +6,13 @@ module RailsVite
       @path = path
     end
 
+    # Vite's default resolve.extensions order, plus CSS extensions
+    RESOLVE_EXTENSIONS = %w[.mjs .js .mts .ts .jsx .tsx .json .css .scss .sass .less .styl .pcss].freeze
+
     def lookup(name)
       manifest = data
-      entry = manifest[name] || raise(MissingEntryError.new(name, @path))
+      entry = manifest[name] || resolve_with_extension(name, manifest) ||
+        raise(MissingEntryError.new(name, @path))
 
       {
         file: entry["file"],
@@ -41,6 +45,16 @@ module RailsVite
       JSON.parse(File.read(@path))
     rescue Errno::ENOENT
       raise MissingManifestError.new(@path)
+    end
+
+    def resolve_with_extension(name, manifest)
+      return if File.extname(name).present?
+
+      RESOLVE_EXTENSIONS.each do |ext|
+        entry = manifest["#{name}#{ext}"]
+        return entry if entry
+      end
+      nil
     end
 
     def resolve_imports(entry, seen, manifest)
