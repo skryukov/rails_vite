@@ -16,7 +16,8 @@ module RailsVite
 
       {
         file: entry["file"],
-        css: entry.fetch("css", []),
+        integrity: entry["integrity"],
+        css: resolve_css(entry, manifest),
         imports: resolve_imports(entry, Set.new, manifest)
       }
     end
@@ -57,6 +58,13 @@ module RailsVite
       nil
     end
 
+    def resolve_css(entry, manifest)
+      entry.fetch("css", []).map do |css_file|
+        integrity = manifest.values.find { |e| e["file"] == css_file }&.dig("integrity")
+        {file: css_file, integrity: integrity}
+      end
+    end
+
     def resolve_imports(entry, seen, manifest)
       entry.fetch("imports", []).flat_map do |import_key|
         next [] if seen.include?(import_key)
@@ -65,7 +73,8 @@ module RailsVite
         imported = manifest[import_key]
         next [] unless imported
 
-        [imported["file"]] + resolve_imports(imported, seen, manifest)
+        [{file: imported["file"], integrity: imported["integrity"]}] +
+          resolve_imports(imported, seen, manifest)
       end
     end
   end

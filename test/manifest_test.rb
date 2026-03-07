@@ -39,15 +39,16 @@ class ManifestTest < Minitest::Test
     result = @manifest.lookup("app/javascript/application.js")
 
     assert_equal "assets/application-a1b2c3d4.js", result[:file]
-    assert_equal ["assets/application-x9y8z7w6.css"], result[:css]
-    assert_includes result[:imports], "assets/vendor-b3c4d5e6.js"
+    assert_equal [{file: "assets/application-x9y8z7w6.css", integrity: nil}], result[:css]
+    assert_includes result[:imports].map { |i| i[:file] }, "assets/vendor-b3c4d5e6.js"
   end
 
   def test_lookup_resolves_nested_imports
     result = @manifest.lookup("app/javascript/application.js")
+    import_files = result[:imports].map { |i| i[:file] }
 
-    assert_includes result[:imports], "assets/vendor-b3c4d5e6.js"
-    assert_includes result[:imports], "assets/shared-1234abcd.js"
+    assert_includes import_files, "assets/vendor-b3c4d5e6.js"
+    assert_includes import_files, "assets/shared-1234abcd.js"
   end
 
   def test_lookup_css_entry
@@ -120,7 +121,43 @@ class ManifestTest < Minitest::Test
     manifest = RailsVite::Manifest.new(@manifest_path)
 
     result = manifest.lookup("entry.js")
-    assert_equal ["assets/a.js", "assets/b.js"], result[:imports]
+    assert_equal ["assets/a.js", "assets/b.js"], result[:imports].map { |i| i[:file] }
+  end
+
+  def test_lookup_returns_integrity
+    sri_manifest = {
+      "app/javascript/application.js" => {
+        "file" => "assets/application-a1b2c3d4.js",
+        "isEntry" => true,
+        "integrity" => "sha384-abc123",
+        "css" => ["assets/application-x9y8z7w6.css"],
+        "imports" => ["_vendor-b3c4d5e6"]
+      },
+      "assets/application-x9y8z7w6.css" => {
+        "file" => "assets/application-x9y8z7w6.css",
+        "integrity" => "sha384-css456"
+      },
+      "_vendor-b3c4d5e6" => {
+        "file" => "assets/vendor-b3c4d5e6.js",
+        "integrity" => "sha384-vendor789"
+      }
+    }
+    File.write(@manifest_path, JSON.generate(sri_manifest))
+    manifest = RailsVite::Manifest.new(@manifest_path)
+
+    result = manifest.lookup("app/javascript/application.js")
+
+    assert_equal "sha384-abc123", result[:integrity]
+    assert_equal "sha384-vendor789", result[:imports].first[:integrity]
+    assert_equal "sha384-css456", result[:css].first[:integrity]
+  end
+
+  def test_lookup_returns_nil_integrity_when_absent
+    result = @manifest.lookup("app/javascript/application.js")
+
+    assert_nil result[:integrity]
+    assert_nil result[:imports].first[:integrity]
+    assert_nil result[:css].first[:integrity]
   end
 
   def test_digest_returns_hex_string

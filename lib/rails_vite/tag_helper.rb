@@ -68,28 +68,35 @@ module RailsVite
       entries.each do |entry|
         result = RailsVite.manifest.lookup(entry)
 
-        Array(result[:imports]).each do |import_file|
-          next if preloaded.include?(import_file)
-          preloaded.add(import_file)
-          tags << tag.link(rel: "modulepreload", href: vite_asset_url(import_file), nonce: nonce)
+        Array(result[:imports]).each do |import_entry|
+          next if preloaded.include?(import_entry[:file])
+          preloaded.add(import_entry[:file])
+          tags << tag.link(rel: "modulepreload", href: vite_asset_url(import_entry[:file]),
+            nonce: nonce, **sri_attrs(import_entry[:integrity]))
         end
 
-        tags << build_asset_tag(entry, vite_asset_url(result[:file]), nonce: nonce, **options)
+        tags << build_asset_tag(entry, vite_asset_url(result[:file]),
+          nonce: nonce, integrity: result[:integrity], **options)
 
-        Array(result[:css]).each do |css_file|
-          tags << tag.link(rel: "stylesheet", href: vite_asset_url(css_file), nonce: nonce, **options)
+        Array(result[:css]).each do |css_entry|
+          tags << tag.link(rel: "stylesheet", href: vite_asset_url(css_entry[:file]),
+            nonce: nonce, **sri_attrs(css_entry[:integrity]), **options)
         end
       end
 
       safe_join(tags, "\n")
     end
 
-    def build_asset_tag(entry, url, nonce: nil, **options)
+    def build_asset_tag(entry, url, nonce: nil, integrity: nil, **options)
       if css_entry?(entry)
-        tag.link(rel: "stylesheet", href: url, nonce: nonce, **options)
+        tag.link(rel: "stylesheet", href: url, nonce: nonce, **sri_attrs(integrity), **options)
       else
-        tag.script(src: url, type: "module", nonce: nonce, **options)
+        tag.script(src: url, type: "module", nonce: nonce, **sri_attrs(integrity), **options)
       end
+    end
+
+    def sri_attrs(integrity)
+      integrity ? {integrity: integrity, crossorigin: "anonymous"} : {}
     end
 
     def with_default_ext(name, ext)

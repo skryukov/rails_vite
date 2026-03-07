@@ -112,6 +112,29 @@ CSS files are detected by extension and emit `<link rel="stylesheet">`:
 <%= vite_tags "application.js", nonce: content_security_policy_nonce %>
 ```
 
+### Subresource Integrity (SRI)
+
+Install the [`vite-plugin-manifest-sri`](https://github.com/nicolo-ribaudo/vite-plugin-manifest-sri) plugin:
+
+```bash
+npm install -D vite-plugin-manifest-sri
+```
+
+```typescript
+import { defineConfig } from 'vite';
+import rails from 'rails-vite-plugin';
+import manifestSRI from 'vite-plugin-manifest-sri';
+
+export default defineConfig({
+  plugins: [
+    rails(),
+    manifestSRI(),
+  ],
+});
+```
+
+That's it — `integrity` and `crossorigin="anonymous"` attributes are automatically added to all script, stylesheet, and modulepreload tags when the manifest includes integrity hashes.
+
 ### Asset Discovery (Images, Fonts)
 
 Use `import.meta.glob` in your entry point to include assets in the Vite manifest:
