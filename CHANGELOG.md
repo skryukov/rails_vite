@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning].
 
 ## [Unreleased]
 
+### Added
+
+- Support custom HTML attributes in `vite_tags` (e.g., `data-turbo-track`, `media`) ([@skryukov])
+- Add `vite_javascript_tag`, `vite_stylesheet_tag`, and `vite_typescript_tag` compat helpers for easier migration from vite_rails ([@skryukov])
+- Auto-discover entrypoints from `sourceDir/entrypoints/` directory ([@skryukov])
+- Support extensionless entry names in `vite_tags` (e.g., `vite_tags("application")`) ([@skryukov])
+
+### Fixed
+
+- `refresh: false` option now correctly disables file watching ([@skryukov])
+
 ## [0.1.0] - 2026-03-07
 
 ### Added

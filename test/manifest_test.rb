@@ -64,6 +64,24 @@ class ManifestTest < Minitest::Test
     assert_equal "assets/logo-aabbccdd.png", path
   end
 
+  def test_lookup_resolves_extensionless_js
+    result = @manifest.lookup("app/javascript/application")
+
+    assert_equal "assets/application-a1b2c3d4.js", result[:file]
+  end
+
+  def test_lookup_resolves_extensionless_css
+    result = @manifest.lookup("app/javascript/admin")
+
+    assert_equal "assets/admin-deadbeef.css", result[:file]
+  end
+
+  def test_lookup_skips_extension_resolution_when_extension_present
+    assert_raises(RailsVite::MissingEntryError) do
+      @manifest.lookup("app/javascript/application.tsx")
+    end
+  end
+
   def test_missing_entry_raises
     error = assert_raises(RailsVite::MissingEntryError) do
       @manifest.lookup("nonexistent.js")

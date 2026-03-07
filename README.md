@@ -1,6 +1,28 @@
 # RailsVite
 
+[![Gem Version](https://badge.fury.io/rb/rails_vite.svg)](https://rubygems.org/gems/rails_vite)
+
 Vite integration for Rails, inspired by [Laravel's Vite plugin](https://laravel.com/docs/12.x/vite). No proxy, no config duplication, no magic.
+
+## Table of Contents
+
+- [How It Works](#how-it-works)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+- [Vite Config](#vite-config)
+- [Adding Frameworks](#adding-frameworks)
+- [SSR](#ssr)
+- [Auto Build](#auto-build)
+- [Testing the Build](#testing-the-build)
+- [Custom Paths](#custom-paths)
+- [Rake Tasks](#rake-tasks)
+- [Migrating from vite_rails](#migrating-from-vite_rails)
+- [Contributing](#contributing)
+- [License](#license)
+
+<a href="https://evilmartians.com/?utm_source=rails_vite&utm_campaign=project_page">
+<img src="https://evilmartians.com/badges/sponsored-by-evil-martians.svg" alt="Built by Evil Martians" width="236" height="54">
+</a>
 
 ## How It Works
 
@@ -62,9 +84,19 @@ Short names are automatically prefixed with `sourceDir` (default: `app/javascrip
 
 | Helper | Purpose |
 |--------|---------|
-| `vite_tags(*entries, nonce: nil)` | Emits script, stylesheet, and modulepreload tags |
+| `vite_tags(*entries, **options)` | Emits script, stylesheet, and modulepreload tags |
+| `vite_javascript_tag(*entries, **options)` | Same as `vite_tags`, appends `.js` to extensionless names |
+| `vite_stylesheet_tag(*entries, **options)` | Same as `vite_tags`, appends `.css` to extensionless names |
+| `vite_typescript_tag(*entries, **options)` | Same as `vite_tags`, appends `.ts` to extensionless names |
 | `vite_asset_path(name)` | Returns the fingerprinted path from the manifest |
 | `vite_image_tag(name, **options)` | Image tag with manifest-resolved src |
+
+All tag helpers accept arbitrary HTML attributes:
+
+```erb
+<%= vite_tags "application.js", "application.css",
+    "data-turbo-track": "reload", nonce: content_security_policy_nonce %>
+```
 
 ### CSS Entry Points
 
@@ -114,7 +146,7 @@ export default defineConfig({
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `input` | auto-detected | Entry point(s). Auto-detects `application.{js,ts,jsx,tsx}` in `sourceDir` |
+| `input` | auto-detected | Entry point(s). If `sourceDir/entrypoints/` exists, all files in it are used. Otherwise, detects `application.{js,ts,jsx,tsx}` in `sourceDir` |
 | `sourceDir` | `'app/javascript'` | Source directory. Short names are prefixed with this. Also sets the `@` import alias |
 | `ssr` | — | SSR entry point |
 | `ssrOutputDirectory` | `'ssr'` | SSR output directory |
@@ -261,6 +293,50 @@ Defaults match the plugin defaults — no config needed if you follow convention
 
 `vite:build` hooks into `assets:precompile` and `test:prepare` automatically. Skip with `SKIP_VITE_BUILD=1`.
 
+
+## Migrating from vite_rails
+
+### 1. Swap dependencies
+
+```ruby
+# Gemfile
+- gem "vite_rails"
++ gem "rails_vite"
+```
+
+```json
+// package.json — replace vite-plugin-ruby with rails-vite-plugin
+- "vite-plugin-ruby": "^5.1.1"
++ "rails-vite-plugin": "^0.1.0"
+```
+
+### 2. Replace `vite.config.ts`
+
+```typescript
+import { defineConfig } from 'vite';
+import rails from 'rails-vite-plugin';
+
+export default defineConfig({
+  plugins: [
+    rails({
+      sourceDir: 'app/frontend',
+    }),
+  ],
+});
+```
+
+If you have an `entrypoints/` directory inside `sourceDir`, all files in it are auto-discovered — no need to list them. Otherwise, set `input` explicitly.
+
+### 3. Delete files
+
+- `config/vite.json` — settings now live in `vite.config.ts`
+- `bin/vite` — no longer needed, `Procfile.dev` runs `npx vite` directly
+
+### 4. Update layouts
+
+Remove `vite_client_tag` and `vite_react_refresh_tag` — both are automatic now.
+
+The `vite_javascript_tag`, `vite_stylesheet_tag`, and `vite_typescript_tag` helpers work as drop-in replacements:
 
 ## Contributing
 

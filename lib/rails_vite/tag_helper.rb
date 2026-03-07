@@ -7,10 +7,23 @@ module RailsVite
       resolved = entries.map { |e| resolve_vite_entry(e, config.source_dir) }
 
       if config.dev_server_running?
-        vite_dev_tags(resolved, config.dev_server_url, nonce: nonce)
+        vite_dev_tags(resolved, config.dev_server_url, nonce: nonce, **options)
       else
-        vite_prod_tags(resolved, nonce: nonce)
+        vite_prod_tags(resolved, nonce: nonce, **options)
       end
+    end
+    alias_method :vite_tag, :vite_tags
+
+    def vite_javascript_tag(*entries, **options)
+      vite_tags(*entries.map { |e| with_default_ext(e, ".js") }, **options)
+    end
+
+    def vite_stylesheet_tag(*entries, **options)
+      vite_tags(*entries.map { |e| with_default_ext(e, ".css") }, **options)
+    end
+
+    def vite_typescript_tag(*entries, **options)
+      vite_tags(*entries.map { |e| with_default_ext(e, ".ts") }, **options)
     end
 
     def vite_asset_path(name)
@@ -23,7 +36,7 @@ module RailsVite
 
     private
 
-    def vite_dev_tags(entries, dev_url, nonce: nil)
+    def vite_dev_tags(entries, dev_url, nonce: nil, **options)
       tags = []
 
       unless @_vite_client_emitted
@@ -42,13 +55,13 @@ module RailsVite
       end
 
       entries.each do |entry|
-        tags << build_asset_tag(entry, "#{dev_url}/#{entry}", nonce: nonce)
+        tags << build_asset_tag(entry, "#{dev_url}/#{entry}", nonce: nonce, **options)
       end
 
       safe_join(tags, "\n")
     end
 
-    def vite_prod_tags(entries, nonce: nil)
+    def vite_prod_tags(entries, nonce: nil, **options)
       tags = []
       preloaded = Set.new
 
@@ -61,22 +74,26 @@ module RailsVite
           tags << tag.link(rel: "modulepreload", href: vite_asset_url(import_file), nonce: nonce)
         end
 
-        tags << build_asset_tag(entry, vite_asset_url(result[:file]), nonce: nonce)
+        tags << build_asset_tag(entry, vite_asset_url(result[:file]), nonce: nonce, **options)
 
         Array(result[:css]).each do |css_file|
-          tags << tag.link(rel: "stylesheet", href: vite_asset_url(css_file), nonce: nonce)
+          tags << tag.link(rel: "stylesheet", href: vite_asset_url(css_file), nonce: nonce, **options)
         end
       end
 
       safe_join(tags, "\n")
     end
 
-    def build_asset_tag(entry, url, nonce: nil)
+    def build_asset_tag(entry, url, nonce: nil, **options)
       if css_entry?(entry)
-        tag.link(rel: "stylesheet", href: url, nonce: nonce)
+        tag.link(rel: "stylesheet", href: url, nonce: nonce, **options)
       else
-        tag.script(src: url, type: "module", nonce: nonce)
+        tag.script(src: url, type: "module", nonce: nonce, **options)
       end
+    end
+
+    def with_default_ext(name, ext)
+      File.extname(name).empty? ? "#{name}#{ext}" : name
     end
 
     def resolve_vite_entry(entry, source_dir)

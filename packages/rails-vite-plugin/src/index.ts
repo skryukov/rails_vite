@@ -194,16 +194,35 @@ function prefixWithSourceDir(entry: string, sourceDir: string): string {
   return `${sourceDir}/${entry}`
 }
 
-const defaultEntryExtensions = ['.js', '.ts', '.jsx', '.tsx']
+const entrypointExtensions = /\.(mjs|js|mts|ts|jsx|tsx|css|scss|sass|less|styl|pcss)$/
 
-function detectEntrypoint(sourceDir: string): string {
-  for (const ext of defaultEntryExtensions) {
+function detectEntrypoint(sourceDir: string): string | string[] {
+  const entrypointsDir = path.join(sourceDir, 'entrypoints')
+  if (fs.existsSync(entrypointsDir)) {
+    return discoverEntrypoints(entrypointsDir).map(
+      (entry) => `entrypoints/${entry}`
+    )
+  }
+
+  for (const ext of ['.js', '.mjs', '.ts', '.mts', '.jsx', '.tsx']) {
     const candidate = path.join(sourceDir, `application${ext}`)
     if (fs.existsSync(candidate)) {
       return `application${ext}`
     }
   }
   return 'application.js'
+}
+
+function discoverEntrypoints(dir: string, base: string = dir): string[] {
+  const entries: string[] = []
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      entries.push(...discoverEntrypoints(path.join(dir, entry.name), base))
+    } else if (entrypointExtensions.test(entry.name)) {
+      entries.push(path.relative(base, path.join(dir, entry.name)))
+    }
+  }
+  return entries
 }
 
 function resolveRefreshPaths(
