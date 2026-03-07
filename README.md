@@ -114,7 +114,7 @@ CSS files are detected by extension and emit `<link rel="stylesheet">`:
 
 ### Subresource Integrity (SRI)
 
-Install the [`vite-plugin-manifest-sri`](https://github.com/nicolo-ribaudo/vite-plugin-manifest-sri) plugin:
+[SRI](https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity) lets browsers verify that fetched assets haven't been tampered with by checking cryptographic hashes. Install the [`vite-plugin-manifest-sri`](https://github.com/nicolo-ribaudo/vite-plugin-manifest-sri) plugin:
 
 ```bash
 npm install -D vite-plugin-manifest-sri
