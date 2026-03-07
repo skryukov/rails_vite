@@ -30,7 +30,7 @@ Vite integration for Rails, inspired by [Laravel's Vite plugin](https://laravel.
 
 **Production:** `vite build` outputs fingerprinted assets to `public/vite/` with a standard Vite manifest. The Rails helper reads the manifest and emits the correct tags.
 
-No Rack proxy. No `config/vite.json`. No version-locked packages.
+No Rack proxy. No `config/vite.json`. No extra binstubs.
 
 ## Quick Start
 
