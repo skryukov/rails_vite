@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning].
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-03-08
+
 ### Fixed
 
 - Short entry names now resolve correctly when using `entrypoints/` directory ([@skryukov])
@@ -33,7 +35,8 @@ and this project adheres to [Semantic Versioning].
 
 [@skryukov]: https://github.com/skryukov
 
-[Unreleased]: https://github.com/skryukov/rails_vite/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/skryukov/rails_vite/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/skryukov/rails_vite/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/skryukov/rails_vite/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/skryukov/rails_vite/commits/v0.1.0
 
