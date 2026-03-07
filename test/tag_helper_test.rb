@@ -332,6 +332,43 @@ class TagHelperTest < Minitest::Test
     assert_match %r{src="http://localhost:5173/app/javascript/application.js".*data-turbo-track="reload"}, html
   end
 
+  # SRI tests
+
+  def test_vite_tags_production_with_sri
+    sri_manifest = {
+      "app/javascript/application.js" => {
+        "file" => "assets/application-a1b2c3d4.js",
+        "isEntry" => true,
+        "integrity" => "sha384-abc123",
+        "css" => ["assets/application-x9y8z7w6.css"],
+        "imports" => ["_vendor-b3c4d5e6"]
+      },
+      "app/javascript/application-x9y8z7w6.css" => {
+        "file" => "assets/application-x9y8z7w6.css",
+        "integrity" => "sha384-css456"
+      },
+      "_vendor-b3c4d5e6" => {
+        "file" => "assets/vendor-b3c4d5e6.js",
+        "integrity" => "sha384-vendor789"
+      }
+    }
+    File.write(@manifest_path, JSON.generate(sri_manifest))
+
+    html = vite_tags("app/javascript/application.js")
+
+    assert_match %r{integrity="sha384-abc123"}, html
+    assert_match %r{crossorigin="anonymous"}, html
+    assert_match %r{rel="modulepreload".*integrity="sha384-vendor789"}, html
+    assert_match %r{rel="stylesheet".*integrity="sha384-css456"}, html
+  end
+
+  def test_vite_tags_production_no_sri_when_absent
+    html = vite_tags("app/javascript/application.js")
+
+    refute_match %r{integrity=}, html
+    refute_match %r{crossorigin=}, html
+  end
+
   # Error tests
 
   def test_missing_entry_raises

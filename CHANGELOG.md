@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning].
 - Add `vite_javascript_tag`, `vite_stylesheet_tag`, and `vite_typescript_tag` compat helpers for easier migration from vite_rails ([@skryukov])
 - Auto-discover entrypoints from `sourceDir/entrypoints/` directory ([@skryukov])
 - Support extensionless entry names in `vite_tags` (e.g., `vite_tags("application")`) ([@skryukov])
+- Subresource Integrity (SRI) support — automatically adds `integrity` and `crossorigin` attributes when `vite-plugin-manifest-sri` is used ([@skryukov])
 
 ### Fixed
 
