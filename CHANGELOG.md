@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning].
 
 - jsbundling mode — use Vite as a bundler with `jsbundling-rails` and Propshaft, no gem required ([@skryukov])
 
+### Fixed
+
+- `vite_asset_path` now works in development ([@skryukov])
+
 ## [0.1.2] - 2026-03-08
 
 ### Fixed
