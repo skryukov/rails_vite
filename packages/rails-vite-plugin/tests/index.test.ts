@@ -5,6 +5,7 @@ import type { ConfigEnv, Plugin, UserConfig } from 'vite'
 import rails, { refreshPaths } from '../src'
 
 const BUILD: ConfigEnv = { command: 'build', mode: 'production' }
+const SSR_BUILD: ConfigEnv = { command: 'build', mode: 'production', isSsrBuild: true }
 const SERVE: ConfigEnv = { command: 'serve', mode: 'development' }
 
 function getConfig(plugin: Plugin, userConfig: UserConfig = {}, env: ConfigEnv = BUILD): UserConfig {
@@ -17,11 +18,8 @@ vi.mock('fs', async () => {
     default: {
       ...actual,
       existsSync: (filePath: string) => {
-        // Mock: app/javascript/application.js exists for auto-detection
         if (filePath.endsWith('app/javascript/application.js')) return true
-        // Mock: app/frontend/application.ts exists
         if (filePath.endsWith('app/frontend/application.ts')) return true
-        // Mock: app/assets/entrypoints directory exists
         if (filePath.endsWith('app/assets/entrypoints')) return true
         return actual.existsSync(filePath)
       },
@@ -164,10 +162,10 @@ describe('rails-vite-plugin', () => {
     expect(config!.publicDir).toBe(false)
   })
 
-  it('uses custom buildDirectory', () => {
+  it('uses custom buildDir', () => {
     const plugin = rails({
       input: 'application.js',
-      buildDirectory: 'assets',
+      buildDir: 'assets',
     })
 
     const config = getConfig(plugin)
@@ -175,10 +173,10 @@ describe('rails-vite-plugin', () => {
     expect(config!.build!.outDir).toBe(path.join('public', 'assets'))
   })
 
-  it('uses custom publicDirectory', () => {
+  it('uses custom publicDir', () => {
     const plugin = rails({
       input: 'application.js',
-      publicDirectory: 'dist',
+      publicDir: 'dist',
     })
 
     const config = getConfig(plugin)
@@ -249,7 +247,7 @@ describe('rails-vite-plugin', () => {
     expect((config!.resolve!.alias as Record<string, string>)['@']).toBe('/custom/path')
   })
 
-  it('appends @ alias when using alias array', () => {
+  it('respects existing @ alias (array form)', () => {
     const plugin = rails({ input: 'application.js' })
 
     const config = getConfig(
@@ -258,19 +256,31 @@ describe('rails-vite-plugin', () => {
     )
     expect(config!.resolve!.alias).toEqual([
       { find: '@', replacement: '/custom/path' },
+    ])
+  })
+
+  it('appends @ alias to array when not present', () => {
+    const plugin = rails({ input: 'application.js' })
+
+    const config = getConfig(
+      plugin,
+      { resolve: { alias: [{ find: '~', replacement: '/other' }] } },
+    )
+    expect(config!.resolve!.alias).toEqual([
+      { find: '~', replacement: '/other' },
       { find: '@', replacement: path.resolve(process.cwd(), 'app/javascript') },
     ])
   })
 
   // --- SSR ---
 
-  it('configures SSR build', () => {
+  it('configures SSR build via isSsrBuild', () => {
     const plugin = rails({
       input: 'application.js',
       ssr: 'ssr.js',
     })
 
-    const config = getConfig(plugin, { build: { ssr: true } })
+    const config = getConfig(plugin, {}, SSR_BUILD)
     expect(config!.build!.manifest).toBe(false)
     expect(config!.build!.ssrManifest).toBe('ssr-manifest.json')
     expect(config!.build!.outDir).toBe('ssr')
@@ -281,10 +291,10 @@ describe('rails-vite-plugin', () => {
     const plugin = rails({
       input: 'application.js',
       ssr: 'ssr.js',
-      ssrOutputDirectory: 'custom-ssr',
+      ssrOutDir: 'custom-ssr',
     })
 
-    const config = getConfig(plugin, { build: { ssr: true } })
+    const config = getConfig(plugin, {}, SSR_BUILD)
     expect(config!.build!.outDir).toBe('custom-ssr')
   })
 
@@ -294,7 +304,7 @@ describe('rails-vite-plugin', () => {
       ssr: ['ssr.js', 'ssr-worker.js'],
     })
 
-    const config = getConfig(plugin, { build: { ssr: true } })
+    const config = getConfig(plugin, {}, SSR_BUILD)
     expect(config!.build!.rollupOptions!.input).toEqual([
       'app/javascript/ssr.js',
       'app/javascript/ssr-worker.js',
@@ -307,7 +317,7 @@ describe('rails-vite-plugin', () => {
       ssr: { main: 'ssr.js' },
     })
 
-    const config = getConfig(plugin, { build: { ssr: true } })
+    const config = getConfig(plugin, {}, SSR_BUILD)
     expect(config!.build!.rollupOptions!.input).toEqual({
       main: 'app/javascript/ssr.js',
     })
@@ -316,29 +326,28 @@ describe('rails-vite-plugin', () => {
   it('uses default input for SSR when no ssr option provided', () => {
     const plugin = rails({ input: 'application.js' })
 
-    const config = getConfig(plugin, { build: { ssr: true } })
-    // Falls back to undefined (no SSR input resolved)
+    const config = getConfig(plugin, {}, SSR_BUILD)
     expect(config!.build!.rollupOptions!.input).toBeUndefined()
   })
 
   it('prevents plugin from being externalized in SSR', () => {
     const plugin = rails({ input: 'application.js' })
 
-    const config = getConfig(plugin, { build: { ssr: true } })
+    const config = getConfig(plugin)
     expect(config!.ssr!.noExternal).toEqual(['rails-vite-plugin'])
   })
 
   it('respects user noExternal: true', () => {
     const plugin = rails({ input: 'application.js' })
 
-    const config = getConfig(plugin, { ssr: { noExternal: true }, build: { ssr: true } })
+    const config = getConfig(plugin, { ssr: { noExternal: true } })
     expect(config!.ssr!.noExternal).toBe(true)
   })
 
   it('merges user noExternal array', () => {
     const plugin = rails({ input: 'application.js' })
 
-    const config = getConfig(plugin, { ssr: { noExternal: ['foo'] }, build: { ssr: true } })
+    const config = getConfig(plugin, { ssr: { noExternal: ['foo'] } })
     expect(config!.ssr!.noExternal).toEqual(['foo', 'rails-vite-plugin'])
   })
 
@@ -377,10 +386,6 @@ describe('rails-vite-plugin', () => {
   })
 
   // --- Refresh paths ---
-
-  // Note: refresh behavior is handled inside configureServer which we don't
-  // test here (same as Laravel). We test resolveRefreshPaths indirectly
-  // through the plugin name.
 
   it('exports refreshPaths', () => {
     expect(refreshPaths).toEqual([

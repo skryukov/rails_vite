@@ -1,7 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'url'
-import { AddressInfo } from 'net'
 import picomatch from 'picomatch'
 import {
   Plugin,
@@ -12,36 +10,40 @@ import {
   defaultAllowedOrigins,
 } from 'vite'
 
-export type InputOption = string | string[] | Record<string, string>
+import type { InputOption } from './shared/types.js'
+import { resolveInput, detectEntrypointsDir, discoverEntrypointInputs, detectEntrypoint } from './shared/entries.js'
+import { resolveAlias } from './shared/alias.js'
+import { resolveDevServerUrl, isAddressInfo } from './shared/dev-server.js'
+import { ensureCommandShouldRunInEnvironment } from './shared/env-guard.js'
+import { refreshPaths, resolveRefreshPaths } from './shared/refresh.js'
+import { readDevServerIndexHtml } from './shared/dev-server-page.js'
+import { resolveNoExternal } from './shared/ssr.js'
+import { bindExitHandler } from './shared/cleanup.js'
+
+export type { InputOption }
+export { refreshPaths }
 
 export interface RailsViteOptions {
   input?: InputOption
   sourceDir?: string
   ssr?: InputOption
-  ssrOutputDirectory?: string
+  ssrOutDir?: string
   devMetaFile?: string
-  buildDirectory?: string
-  publicDirectory?: string
+  /** Directory name under publicDir for Vite build output (default: 'vite') */
+  buildDir?: string
+  /** Public directory (default: 'public') */
+  publicDir?: string
   refresh?: boolean | string | string[]
 }
-
-type DevServerUrl = `${'http' | 'https'}://${string}:${number}`
-
-export const refreshPaths = [
-  'app/views/**/*.{erb,slim,haml}',
-  'app/helpers/**/*.rb',
-]
-
-let exitHandlersBound = false
 
 export default function rails(options: RailsViteOptions = {}): Plugin {
   const sourceDir = options.sourceDir ?? 'app/javascript'
   const entrypointsDir = options.input === undefined ? detectEntrypointsDir(sourceDir) : null
   const input = options.input ?? (entrypointsDir ? discoverEntrypointInputs(sourceDir, entrypointsDir) : detectEntrypoint(sourceDir))
-  const publicDirectory = options.publicDirectory ?? 'public'
-  const buildDirectory = options.buildDirectory ?? 'vite'
+  const publicDir = options.publicDir ?? 'public'
+  const buildDir = options.buildDir ?? 'vite'
   const devMetaPath = options.devMetaFile ?? path.join('tmp', 'rails-vite.json')
-  const ssrOutputDirectory = options.ssrOutputDirectory ?? 'ssr'
+  const ssrOutDir = options.ssrOutDir ?? 'ssr'
 
   const resolvedInput = resolveInput(input, sourceDir)
   const resolvedSsr = options.ssr !== undefined ? resolveInput(options.ssr, sourceDir) : undefined
@@ -53,21 +55,20 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
     name: 'rails-vite',
     enforce: 'post',
 
-    config(userConfig: UserConfig, { command, mode }: ConfigEnv): UserConfig {
+    config(userConfig: UserConfig, { command, mode, isSsrBuild }: ConfigEnv): UserConfig {
       const env = loadEnv(mode, userConfig.envDir || process.cwd(), '')
-      const ssr = !!userConfig.build?.ssr
 
-      ensureCommandShouldRunInEnvironment(command, env)
+      ensureCommandShouldRunInEnvironment(command, env, 'rails-vite-plugin')
 
       return {
-        base: userConfig.base ?? (command === 'build' ? `/${buildDirectory}/` : ''),
+        base: userConfig.base ?? (command === 'build' ? `/${buildDir}/` : ''),
         publicDir: userConfig.publicDir ?? false,
         build: {
-          manifest: userConfig.build?.manifest ?? (ssr ? false : 'manifest.json'),
-          ssrManifest: userConfig.build?.ssrManifest ?? (ssr ? 'ssr-manifest.json' : false),
-          outDir: userConfig.build?.outDir ?? (ssr ? ssrOutputDirectory : path.join(publicDirectory, buildDirectory)),
+          manifest: userConfig.build?.manifest ?? (isSsrBuild ? false : 'manifest.json'),
+          ssrManifest: userConfig.build?.ssrManifest ?? (isSsrBuild ? 'ssr-manifest.json' : false),
+          outDir: userConfig.build?.outDir ?? (isSsrBuild ? ssrOutDir : path.join(publicDir, buildDir)),
           rollupOptions: {
-            input: userConfig.build?.rollupOptions?.input ?? (ssr ? resolvedSsr : resolvedInput),
+            input: userConfig.build?.rollupOptions?.input ?? (isSsrBuild ? resolvedSsr : resolvedInput),
           },
           assetsInlineLimit: userConfig.build?.assetsInlineLimit ?? 0,
         },
@@ -77,15 +78,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
           },
         },
         resolve: {
-          alias: Array.isArray(userConfig.resolve?.alias)
-            ? [
-                ...(userConfig.resolve?.alias ?? []),
-                { find: '@', replacement: path.resolve(process.cwd(), sourceDir) },
-              ]
-            : {
-                '@': path.resolve(process.cwd(), sourceDir),
-                ...(userConfig.resolve?.alias as Record<string, string> | undefined),
-              },
+          alias: resolveAlias(userConfig.resolve?.alias, sourceDir),
         },
         ssr: {
           noExternal: resolveNoExternal(userConfig),
@@ -129,18 +122,9 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
         }
       })
 
-      if (!exitHandlersBound) {
-        const clean = () => {
-          fs.rmSync(devMetaPath, { force: true })
-        }
-
-        process.on('exit', clean)
-        process.on('SIGINT', () => process.exit())
-        process.on('SIGTERM', () => process.exit())
-        process.on('SIGHUP', () => process.exit())
-
-        exitHandlersBound = true
-      }
+      bindExitHandler(() => {
+        fs.rmSync(devMetaPath, { force: true })
+      })
 
       // Watch view templates for full-page reload
       const resolvedRefreshPaths = resolveRefreshPaths(options.refresh)
@@ -150,16 +134,12 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
         server.watcher.on('change', (filePath: string) => {
           const relativePath = path.relative(process.cwd(), filePath)
           if (match(relativePath)) {
-            server.ws.send({ type: 'full-reload', path: '*' })
+            server.hot.send({ type: 'full-reload', path: '*' })
           }
         })
       }
 
-      // Serve a helpful page at the dev server root
-      const devServerIndexHtml = fs.readFileSync(
-        path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dev-server-index.html'),
-        'utf-8'
-      )
+      const devServerIndexHtml = readDevServerIndexHtml()
 
       return () =>
         server.middlewares.use((req, res, next) => {
@@ -172,147 +152,4 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
         })
     },
   }
-}
-
-function resolveInput(
-  input: InputOption,
-  sourceDir: string
-): InputOption {
-  if (typeof input === 'object' && !Array.isArray(input)) {
-    return Object.fromEntries(
-      Object.entries(input).map(([key, value]) => [key, prefixWithSourceDir(value, sourceDir)])
-    )
-  }
-  if (Array.isArray(input)) {
-    return input.map((entry) => prefixWithSourceDir(entry, sourceDir))
-  }
-  return prefixWithSourceDir(input, sourceDir)
-}
-
-function prefixWithSourceDir(entry: string, sourceDir: string): string {
-  if (entry.startsWith(sourceDir + '/') || entry.startsWith('/')) {
-    return entry
-  }
-  return `${sourceDir}/${entry}`
-}
-
-const entrypointExtensions = /\.(mjs|js|mts|ts|jsx|tsx|css|scss|sass|less|styl|pcss)$/
-
-function detectEntrypointsDir(sourceDir: string): string | null {
-  const entrypointsDir = path.join(sourceDir, 'entrypoints')
-  return fs.existsSync(entrypointsDir) ? 'entrypoints' : null
-}
-
-function discoverEntrypointInputs(sourceDir: string, entrypointsDir: string): string[] {
-  const absDir = path.join(sourceDir, entrypointsDir)
-  return discoverEntrypoints(absDir).map(
-    (entry) => `${entrypointsDir}/${entry}`
-  )
-}
-
-function detectEntrypoint(sourceDir: string): string {
-  for (const ext of ['.js', '.mjs', '.ts', '.mts', '.jsx', '.tsx']) {
-    const candidate = path.join(sourceDir, `application${ext}`)
-    if (fs.existsSync(candidate)) {
-      return `application${ext}`
-    }
-  }
-  return 'application.js'
-}
-
-function discoverEntrypoints(dir: string, base: string = dir): string[] {
-  const entries: string[] = []
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) {
-      entries.push(...discoverEntrypoints(path.join(dir, entry.name), base))
-    } else if (entrypointExtensions.test(entry.name)) {
-      entries.push(path.relative(base, path.join(dir, entry.name)))
-    }
-  }
-  return entries
-}
-
-function resolveRefreshPaths(
-  refresh: RailsViteOptions['refresh']
-): string[] {
-  if (refresh === false) return []
-  if (!refresh || refresh === true) return refreshPaths
-  if (typeof refresh === 'string') return [refresh]
-  return refresh
-}
-
-function resolveDevServerUrl(
-  address: AddressInfo,
-  config: ResolvedConfig
-): DevServerUrl {
-  const hmr = typeof config.server.hmr === 'object' ? config.server.hmr : null
-
-  const clientProtocol = hmr?.protocol
-    ? hmr.protocol === 'wss'
-      ? 'https'
-      : 'http'
-    : null
-  const serverProtocol = config.server.https ? 'https' : 'http'
-  const protocol = clientProtocol ?? serverProtocol
-
-  const configHost =
-    typeof config.server.host === 'string' ? config.server.host : null
-  const serverAddress =
-    address.family === 'IPv6' || (address.family as unknown) === 6
-      ? `[${address.address}]`
-      : address.address
-  const host = hmr?.host ?? configHost ?? serverAddress
-
-  const port = hmr?.clientPort ?? address.port
-
-  return `${protocol}://${host}:${port}`
-}
-
-function isAddressInfo(
-  x: string | AddressInfo | null | undefined
-): x is AddressInfo {
-  return typeof x === 'object' && x !== null
-}
-
-function ensureCommandShouldRunInEnvironment(
-  command: string,
-  env: Record<string, string>
-): void {
-  if (command === 'build') {
-    return
-  }
-
-  if (env.CI !== undefined) {
-    throw new Error(
-      'rails-vite-plugin: You should not run the Vite dev server in CI. ' +
-        'Run `rake vite:build` instead.'
-    )
-  }
-
-  if (env.RAILS_ENV === 'production') {
-    throw new Error(
-      'rails-vite-plugin: You should not run the Vite dev server in production. ' +
-        'Run `rake vite:build` instead.'
-    )
-  }
-}
-
-function resolveNoExternal(
-  config: UserConfig
-): true | Array<string | RegExp> {
-  const userNoExternal = (config.ssr as { noExternal?: true | Array<string | RegExp> } | undefined)?.noExternal
-  const pluginNoExternal = ['rails-vite-plugin']
-
-  if (userNoExternal === true) {
-    return true
-  }
-
-  if (userNoExternal === undefined) {
-    return pluginNoExternal
-  }
-
-  return [
-    ...(Array.isArray(userNoExternal) ? userNoExternal : [userNoExternal]),
-    ...pluginNoExternal,
-  ]
 }
