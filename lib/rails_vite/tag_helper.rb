@@ -27,7 +27,14 @@ module RailsVite
     end
 
     def vite_asset_path(name)
-      vite_asset_url(RailsVite.manifest.path_for(name))
+      config = RailsVite.config
+      resolved = resolve_vite_entry(name, config.source_dir, nil)
+
+      if config.dev_server_running?
+        "#{config.dev_server_url}/#{resolved}"
+      else
+        vite_asset_url(RailsVite.manifest.path_for(resolved))
+      end
     end
 
     def vite_image_tag(name, **options)

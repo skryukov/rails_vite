@@ -25,7 +25,7 @@ class TagHelperTest < Minitest::Test
       "file" => "assets/admin-aabb1122.css",
       "isEntry" => true
     },
-    "app/assets/images/logo.png" => {
+    "app/javascript/images/logo.png" => {
       "file" => "assets/logo-aabbccdd.png"
     }
   }.freeze
@@ -83,9 +83,25 @@ class TagHelperTest < Minitest::Test
   end
 
   def test_vite_asset_path
-    path = vite_asset_path("app/assets/images/logo.png")
+    path = vite_asset_path("images/logo.png")
 
     assert_equal "/vite/assets/logo-aabbccdd.png", path
+  end
+
+  def test_vite_asset_path_dev_mode
+    File.write(File.join(@dir, "rails-vite.json"), '{"url":"http://localhost:5173","sourceDir":"app/javascript"}')
+
+    path = vite_asset_path("images/logo.png")
+
+    assert_equal "http://localhost:5173/app/javascript/images/logo.png", path
+  end
+
+  def test_vite_asset_path_dev_mode_full_path
+    File.write(File.join(@dir, "rails-vite.json"), '{"url":"http://localhost:5173","sourceDir":"app/javascript"}')
+
+    path = vite_asset_path("app/javascript/images/logo.png")
+
+    assert_equal "http://localhost:5173/app/javascript/images/logo.png", path
   end
 
   # Dev mode tests
@@ -123,7 +139,7 @@ class TagHelperTest < Minitest::Test
   def test_vite_asset_path_with_asset_host
     Rails.application.config.action_controller.asset_host = "https://cdn.example.com"
 
-    path = vite_asset_path("app/assets/images/logo.png")
+    path = vite_asset_path("images/logo.png")
 
     assert_equal "https://cdn.example.com/vite/assets/logo-aabbccdd.png", path
   ensure
@@ -289,7 +305,7 @@ class TagHelperTest < Minitest::Test
   # vite_image_tag tests
 
   def test_vite_image_tag
-    html = vite_image_tag("app/assets/images/logo.png", alt: "Logo")
+    html = vite_image_tag("images/logo.png", alt: "Logo")
 
     assert_match %r{<img.*src="/vite/assets/logo-aabbccdd.png"}, html
     assert_match %r{alt="Logo"}, html
@@ -311,7 +327,7 @@ class TagHelperTest < Minitest::Test
   def test_vite_asset_path_with_proc_asset_host
     Rails.application.config.action_controller.asset_host = ->(_source) { "https://lambda-cdn.example.com" }
 
-    path = vite_asset_path("app/assets/images/logo.png")
+    path = vite_asset_path("images/logo.png")
 
     assert_equal "https://lambda-cdn.example.com/vite/assets/logo-aabbccdd.png", path
   ensure
