@@ -11,6 +11,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./jsbundling": {
+      "import": "./dist/jsbundling.js",
+      "types": "./dist/jsbundling.d.ts"
     }
   },
   "files": [
@@ -43,6 +47,8 @@
   "keywords": [
     "vite",
     "rails",
+    "jsbundling",
+    "jsbundling-rails",
     "vite-plugin"
   ],
   "homepage": "https://github.com/skryukov/rails_vite",

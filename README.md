@@ -16,6 +16,7 @@ Vite integration for Rails, inspired by [Laravel's Vite plugin](https://laravel.
 - [Testing the Build](#testing-the-build)
 - [Custom Paths](#custom-paths)
 - [Rake Tasks](#rake-tasks)
+- [jsbundling Mode](#jsbundling-mode)
 - [Migrating from vite_rails](#migrating-from-vite_rails)
 - [Contributing](#contributing)
 - [License](#license)
@@ -316,6 +317,80 @@ Defaults match the plugin defaults — no config needed if you follow convention
 
 `vite:build` hooks into `assets:precompile` and `test:prepare` automatically. Skip with `SKIP_VITE_BUILD=1`.
 
+
+## jsbundling Mode
+
+If you're using [`jsbundling-rails`](https://github.com/rails/jsbundling-rails) with Propshaft and want Vite as your bundler, you don't need the `rails_vite` gem — just the npm package:
+
+```bash
+npm install -D rails-vite-plugin vite
+```
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite';
+import jsbundling from 'rails-vite-plugin/jsbundling';
+
+export default defineConfig({
+  plugins: [
+    jsbundling(),
+  ],
+});
+```
+
+**How it works:** In production, Vite builds to `public/assets/` and copies entry files to `app/assets/builds/` so Propshaft can serve them via `javascript_include_tag` and `stylesheet_link_tag`. In development, the plugin writes stub files to `app/assets/builds/` that redirect the browser to Vite's dev server for HMR.
+
+### jsbundling Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `input` | auto-detected | Entry point(s). If `sourceDir/entrypoints/` exists, all files in it are used. Otherwise, detects `application.{js,ts,jsx,tsx}` in `sourceDir` |
+| `sourceDir` | `'app/javascript'` | Source directory. Short names are prefixed with this. Also sets the `@` import alias |
+| `assetPipelineDir` | `'app/assets/builds'` | Directory where Propshaft/Sprockets picks up entry files |
+| `outputDir` | `'public/assets'` | Public directory for the full Vite build output |
+| `ssr` | — | SSR entry point. String or `{ entry, outDir }` |
+| `refresh` | — | Paths to watch for full-page reload. `true` watches `app/views/**` and `app/helpers/**` |
+| `devMetaFile` | `'tmp/rails-vite.json'` | Dev metadata file path. Set to `false` to disable |
+
+### Replacing esbuild
+
+In your `Procfile.dev`, replace the esbuild command:
+
+```
+web: bin/rails server -p 3000
+-js: yarn build --watch
++vite: npx vite
+```
+
+CSS and JS entries in `app/javascript/entrypoints/` are auto-discovered. Both `javascript_include_tag` and `stylesheet_link_tag` work unchanged — Propshaft resolves them from `app/assets/builds/` as before.
+
+### Frameworks
+
+React and Vue work the same as in the standard plugin — add the framework plugin before `jsbundling()`:
+
+```typescript
+import { defineConfig } from 'vite';
+import jsbundling from 'rails-vite-plugin/jsbundling';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    jsbundling(),
+  ],
+});
+```
+
+### Upgrading to rails_vite
+
+To switch from jsbundling mode to the full `rails_vite` gem:
+
+1. Add `gem "rails_vite"` to your Gemfile and `bundle install`
+2. Change the import in `vite.config.ts` from `rails-vite-plugin/jsbundling` to `rails-vite-plugin`
+3. Replace `javascript_include_tag` / `stylesheet_link_tag` with `vite_tags` in your layouts
+4. Remove `jsbundling-rails` from your Gemfile
+
+In development, jsbundling mode writes `tmp/rails-vite.json` — the same file the `rails_vite` gem reads. You can add the gem and verify `vite_tags` works in dev before deploying.
 
 ## Migrating from vite_rails
 
