@@ -1,6 +1,6 @@
 {
   "name": "rails-vite-plugin",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Vite plugin for Rails integration",
   "author": "Svyatoslav Kryukov <me@skryukov.dev>",
   "license": "MIT",
