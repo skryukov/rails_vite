@@ -142,7 +142,7 @@ Use `import.meta.glob` in your entry point to include assets in the Vite manifes
 
 ```js
 // app/javascript/application.js
-import.meta.glob(['../assets/images/**']);
+import.meta.glob(['../assets/images/**'], { eager: true });
 ```
 
 Then reference them in views:
@@ -173,10 +173,10 @@ export default defineConfig({
 | `input` | auto-detected | Entry point(s). If `sourceDir/entrypoints/` exists, all files in it are used. Otherwise, detects `application.{js,ts,jsx,tsx}` in `sourceDir` |
 | `sourceDir` | `'app/javascript'` | Source directory. Short names are prefixed with this. Also sets the `@` import alias |
 | `ssr` | — | SSR entry point |
-| `ssrOutputDirectory` | `'ssr'` | SSR output directory |
+| `ssrOutDir` | `'ssr'` | SSR output directory |
 | `devMetaFile` | `'tmp/rails-vite.json'` | Dev metadata file path |
-| `buildDirectory` | `'vite'` | Build output subdirectory inside `public/` |
-| `publicDirectory` | `'public'` | Public directory |
+| `buildDir` | `'vite'` | Build output subdirectory inside `public/` |
+| `publicDir` | `'public'` | Public directory |
 | `refresh` | `true` | Paths to watch for full-page reload. `true` watches `app/views/**` and `app/helpers/**` |
 
 ### Multiple Entry Points
@@ -252,7 +252,7 @@ export default defineConfig({
 
 ## SSR
 
-Set `ssr` to the entry point used for server-side rendering. When you run `npx vite build --ssr`, the plugin uses this as the input and outputs to the `ssrOutputDirectory` (default: `ssr/`).
+Set `ssr` to the entry point used for server-side rendering. When you run `npx vite build --ssr`, the plugin uses this as the input and outputs to the `ssrOutDir` (default: `ssr/`).
 
 ```typescript
 rails({
@@ -405,7 +405,7 @@ In development, jsbundling mode writes `tmp/rails-vite.json` — the same file t
 ```json
 // package.json — replace vite-plugin-ruby with rails-vite-plugin
 - "vite-plugin-ruby": "^5.1.1"
-+ "rails-vite-plugin": "^0.1.0"
++ "rails-vite-plugin": "^0.2.0"
 ```
 
 ### 2. Replace `vite.config.ts`
