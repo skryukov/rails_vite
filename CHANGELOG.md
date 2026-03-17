@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## [0.2.1] - 2026-03-17
+
+### Added
+
+- Vite 8 (Rolldown) compatibility — support `rolldownOptions` alongside `rollupOptions` ([@skryukov])
+- Test mode isolation — build to `public/vite-test/` in test mode so test builds don't clobber dev/prod assets ([@skryukov])
+- Define `assets:precompile` and `assets:clobber` rake tasks when no asset pipeline is present ([@skryukov])
+
+### Fixed
+
+- Fix `?url` imports and asset references pointing to Rails server instead of Vite dev server ([@skryukov])
+- Fix embedded Vite instances (Storybook) overwriting dev stubs in jsbundling mode ([@skryukov])
+
 ## [0.2.0] - 2026-03-11
 
 ### Added
@@ -43,7 +56,8 @@ and this project adheres to [Semantic Versioning].
 
 [@skryukov]: https://github.com/skryukov
 
-[Unreleased]: https://github.com/skryukov/rails_vite/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/skryukov/rails_vite/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/skryukov/rails_vite/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/skryukov/rails_vite/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/skryukov/rails_vite/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/skryukov/rails_vite/compare/v0.1.0...v0.1.1
