@@ -2,18 +2,22 @@ module RailsVite
   class Config
     META_FILENAME = "rails-vite.json"
 
-    attr_writer :dev_meta_path, :manifest_path, :asset_prefix, :auto_build
+    attr_writer :dev_meta_path, :manifest_path, :asset_prefix, :auto_build, :build_dir
 
     def dev_meta_path
       @dev_meta_path || Rails.root.join("tmp", META_FILENAME)
     end
 
+    def build_dir
+      @build_dir || (Rails.env.test? ? "vite-test" : "vite")
+    end
+
     def manifest_path
-      @manifest_path || Rails.root.join("public/vite/manifest.json")
+      @manifest_path || Rails.root.join("public", build_dir, "manifest.json")
     end
 
     def asset_prefix
-      @asset_prefix || "/vite"
+      @asset_prefix || "/#{build_dir}"
     end
 
     def source_dir
@@ -30,6 +34,7 @@ module RailsVite
     end
 
     def dev_server_running?
+      return false if Rails.env.test?
       !!dev_server_url
     end
 
