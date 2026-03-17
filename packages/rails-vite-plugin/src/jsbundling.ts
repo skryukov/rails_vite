@@ -14,6 +14,7 @@ import type { InputOption, ResolvedEntry } from './shared/types.js'
 import { resolveEntries, entriesToRollupInput, prefixWithSourceDir, detectEntrypointsDir, discoverEntrypointInputs, detectEntrypoint, isEntrypointFile } from './shared/entries.js'
 import { resolveAlias } from './shared/alias.js'
 import { resolveDevServerUrl, isAddressInfo } from './shared/dev-server.js'
+import { resolveBundlerOptionsKey, getUserBundlerInput } from './shared/bundler-compat.js'
 import { ensureCommandShouldRunInEnvironment } from './shared/env-guard.js'
 import { refreshPaths, resolveRefreshPaths } from './shared/refresh.js'
 import { cssExtensions } from './shared/css.js'
@@ -77,6 +78,10 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
 
       ensureCommandShouldRunInEnvironment(command, env, 'rails-vite-plugin/jsbundling')
 
+      // @ts-expect-error -- `this.meta.rolldownVersion` exists in Vite 8+
+      const bundlerOptionsKey = resolveBundlerOptionsKey(this.meta)
+      const userBundlerInput = getUserBundlerInput(userConfig)
+
       // SSR builds get minimal config — just entry, outDir, base, and alias.
       // No asset pipeline stubs or client-specific settings.
       if (isSsrBuild) {
@@ -87,8 +92,8 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
             build: {
               ssrManifest: userConfig.build?.ssrManifest ?? 'ssr-manifest.json',
               outDir: userConfig.build?.outDir ?? ssrConfig.outDir,
-              rollupOptions: {
-                input: userConfig.build?.rollupOptions?.input ?? ssrConfig.entry,
+              [bundlerOptionsKey]: {
+                input: userBundlerInput ?? ssrConfig.entry,
               },
             },
           } : {}),
@@ -113,8 +118,8 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
         build: {
           manifest: userConfig.build?.manifest ?? false,
           outDir: userConfig.build?.outDir ?? outputDir,
-          rollupOptions: {
-            input: userConfig.build?.rollupOptions?.input ?? rollupInput,
+          [bundlerOptionsKey]: {
+            input: userBundlerInput ?? rollupInput,
             output: {
               entryFileNames: (chunkInfo: { facadeModuleId?: string | null }) => {
                 if (chunkInfo.facadeModuleId && cssExtensions.test(chunkInfo.facadeModuleId)) {

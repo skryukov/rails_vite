@@ -14,6 +14,7 @@ import type { InputOption } from './shared/types.js'
 import { resolveInput, detectEntrypointsDir, discoverEntrypointInputs, detectEntrypoint } from './shared/entries.js'
 import { resolveAlias } from './shared/alias.js'
 import { resolveDevServerUrl, isAddressInfo } from './shared/dev-server.js'
+import { resolveBundlerOptionsKey, getUserBundlerInput } from './shared/bundler-compat.js'
 import { ensureCommandShouldRunInEnvironment } from './shared/env-guard.js'
 import { refreshPaths, resolveRefreshPaths } from './shared/refresh.js'
 import { readDevServerIndexHtml } from './shared/dev-server-page.js'
@@ -60,6 +61,10 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
 
       ensureCommandShouldRunInEnvironment(command, env, 'rails-vite-plugin')
 
+      // @ts-expect-error -- `this.meta.rolldownVersion` exists in Vite 8+
+      const bundlerOptionsKey = resolveBundlerOptionsKey(this.meta)
+      const userBundlerInput = getUserBundlerInput(userConfig)
+
       return {
         base: userConfig.base ?? (command === 'build' ? `/${buildDir}/` : ''),
         publicDir: userConfig.publicDir ?? false,
@@ -67,8 +72,8 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
           manifest: userConfig.build?.manifest ?? (isSsrBuild ? false : 'manifest.json'),
           ssrManifest: userConfig.build?.ssrManifest ?? (isSsrBuild ? 'ssr-manifest.json' : false),
           outDir: userConfig.build?.outDir ?? (isSsrBuild ? ssrOutDir : path.join(publicDir, buildDir)),
-          rollupOptions: {
-            input: userConfig.build?.rollupOptions?.input ?? (isSsrBuild ? resolvedSsr : resolvedInput),
+          [bundlerOptionsKey]: {
+            input: userBundlerInput ?? (isSsrBuild ? resolvedSsr : resolvedInput),
           },
           assetsInlineLimit: userConfig.build?.assetsInlineLimit ?? 0,
         },
