@@ -1,6 +1,7 @@
 import { AddressInfo } from 'net'
 import type { ResolvedConfig } from 'vite'
 import type { DevServerUrl } from './types.js'
+import { ORIGIN_PLACEHOLDER } from './types.js'
 
 export function resolveDevServerUrl(
   address: AddressInfo,
@@ -33,4 +34,10 @@ export function isAddressInfo(
   x: string | AddressInfo | null | undefined
 ): x is AddressInfo {
   return typeof x === 'object' && x !== null
+}
+
+export function replaceOriginPlaceholder(code: string, devServerUrl: string | null): string | undefined {
+  if (devServerUrl && code.includes(ORIGIN_PLACEHOLDER)) {
+    return code.replaceAll(ORIGIN_PLACEHOLDER, devServerUrl)
+  }
 }
