@@ -108,12 +108,6 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
         }
       }
 
-      // In dev mode, write placeholder stubs immediately so Propshaft/Sprockets
-      // can discover them when Rails boots (both may start concurrently via bin/dev).
-      if (command === 'serve') {
-        writePlaceholderStubs(entries, assetPipelineDir, writtenStubs)
-      }
-
       return {
         base: userConfig.base ?? (command === 'build' ? buildBase : ''),
         publicDir: userConfig.publicDir ?? false,
@@ -222,6 +216,14 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
       const debouncedSyncStubs = () => {
         if (syncTimer) clearTimeout(syncTimer)
         syncTimer = setTimeout(syncStubs, 100)
+      }
+
+      // Write placeholder stubs so Propshaft/Sprockets can discover asset files
+      // at boot time, before the Vite dev server is ready with its URL.
+      // Only write when httpServer exists — skip for embedded Vite instances
+      // (e.g., Storybook) that would otherwise overwrite real dev stubs.
+      if (server.httpServer && !server.httpServer.listening) {
+        writePlaceholderStubs(entries, assetPipelineDir, writtenStubs)
       }
 
       server.httpServer?.once('listening', () => {
