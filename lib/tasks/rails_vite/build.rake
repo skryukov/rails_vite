@@ -20,10 +20,24 @@ namespace :vite do
 end
 
 unless ENV["SKIP_VITE_BUILD"]
-  %w[assets:precompile test:prepare spec:prepare db:test:prepare].each do |t|
-    Rake::Task[t].enhance(["vite:build"]) if Rake::Task.task_defined?(t)
-    break if %w[test:prepare spec:prepare].include?(t) && Rake::Task.task_defined?(t)
+  if Rake::Task.task_defined?("assets:precompile")
+    Rake::Task["assets:precompile"].enhance(["vite:build"])
+  else
+    desc "Compile assets"
+    Rake::Task.define_task("assets:precompile" => "vite:build")
   end
 
-  Rake::Task["assets:clobber"].enhance(["vite:clobber"]) if Rake::Task.task_defined?("assets:clobber")
+  if Rake::Task.task_defined?("assets:clobber")
+    Rake::Task["assets:clobber"].enhance(["vite:clobber"])
+  else
+    desc "Remove compiled assets"
+    Rake::Task.define_task("assets:clobber" => "vite:clobber")
+  end
+
+  %w[test:prepare spec:prepare db:test:prepare].each do |t|
+    if Rake::Task.task_defined?(t)
+      Rake::Task[t].enhance(["vite:build"])
+      break
+    end
+  end
 end
