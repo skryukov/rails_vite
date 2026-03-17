@@ -30,6 +30,7 @@ interface MockServer {
   httpServer: {
     once: (event: string, cb: Function) => void
     address: () => { address: string; port: number; family: string }
+    listening: boolean
   }
   watcher: {
     add: ReturnType<typeof vi.fn>
@@ -53,6 +54,7 @@ function createMockServer(): MockServer {
         eventListeners[event].push(cb)
       },
       address: () => ({ address: '127.0.0.1', port: 5173, family: 'IPv4' }),
+      listening: false,
     },
     watcher: {
       add: vi.fn(),
@@ -528,11 +530,15 @@ describe('rails-vite-plugin/jsbundling', () => {
   it('writes placeholder stubs during serve', () => {
     const plugin = jsbundling({ input: 'application.js' })
 
-    // Clear mocks right before to isolate calls from plugin construction
+    getConfig(plugin, {}, SERVE)
+    callConfigResolved(plugin)
+
+    // Clear mocks right before to isolate calls from configureServer
     vi.mocked(fs.mkdirSync).mockClear()
     vi.mocked(fs.writeFileSync).mockClear()
 
-    getConfig(plugin, {}, SERVE)
+    const server = createMockServer()
+    ;(plugin.configureServer as Function)(server)
 
     // writePlaceholderStubs creates the directory and writes JS + CSS stubs
     const mkdirCalls = vi.mocked(fs.mkdirSync).mock.calls
