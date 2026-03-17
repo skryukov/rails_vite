@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## rails-vite-plugin@0.2.2 - 2026-03-17
+
+### Fixed
+
+- Fix ES module identity split when using Propshaft/Sprockets ([@skryukov])
+
 ## rails_vite@0.2.1 / rails-vite-plugin@0.2.1 - 2026-03-17
 
 ### Added
