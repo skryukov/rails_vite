@@ -43,7 +43,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
   const entrypointsDir = options.input === undefined ? detectEntrypointsDir(sourceDir) : null
   const input = options.input ?? (entrypointsDir ? discoverEntrypointInputs(sourceDir, entrypointsDir) : detectEntrypoint(sourceDir))
   const publicDir = options.publicDir ?? 'public'
-  const buildDir = options.buildDir ?? 'vite'
+  const userBuildDir = options.buildDir
   const devMetaPath = options.devMetaFile ?? path.join('tmp', 'rails-vite.json')
   const ssrOutDir = options.ssrOutDir ?? 'ssr'
 
@@ -53,6 +53,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
   let resolvedConfig: ResolvedConfig
   let reactRefresh = false
   let devServerUrl: string | null = null
+  let effectiveBuildDir: string
 
   return {
     name: 'rails-vite',
@@ -67,13 +68,15 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
       const bundlerOptionsKey = resolveBundlerOptionsKey(this.meta)
       const userBundlerInput = getUserBundlerInput(userConfig)
 
+      effectiveBuildDir = userBuildDir ?? (mode === 'test' ? 'vite-test' : 'vite')
+
       return {
-        base: userConfig.base ?? (command === 'build' ? `/${buildDir}/` : ''),
+        base: userConfig.base ?? (command === 'build' ? `/${effectiveBuildDir}/` : ''),
         publicDir: userConfig.publicDir ?? false,
         build: {
           manifest: userConfig.build?.manifest ?? (isSsrBuild ? false : 'manifest.json'),
           ssrManifest: userConfig.build?.ssrManifest ?? (isSsrBuild ? 'ssr-manifest.json' : false),
-          outDir: userConfig.build?.outDir ?? (isSsrBuild ? ssrOutDir : path.join(publicDir, buildDir)),
+          outDir: userConfig.build?.outDir ?? (isSsrBuild ? ssrOutDir : path.join(publicDir, effectiveBuildDir)),
           [bundlerOptionsKey]: {
             input: userBundlerInput ?? (isSsrBuild ? resolvedSsr : resolvedInput),
           },
@@ -103,10 +106,9 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
       if (resolvedConfig.build.ssr) return
 
       const outDir = resolvedConfig.build.outDir
-      fs.writeFileSync(
-        path.join(outDir, 'rails-vite.json'),
-        JSON.stringify(entrypointsDir ? { sourceDir, entrypointsDir } : { sourceDir })
-      )
+      const meta: Record<string, unknown> = { sourceDir, buildDir: effectiveBuildDir }
+      if (entrypointsDir) meta.entrypointsDir = entrypointsDir
+      fs.writeFileSync(path.join(outDir, 'rails-vite.json'), JSON.stringify(meta))
     },
 
     transform(code) {
@@ -120,7 +122,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
         if (isAddressInfo(address)) {
           devServerUrl = resolveDevServerUrl(address, resolvedConfig)
 
-          const meta: Record<string, unknown> = { url: devServerUrl, sourceDir }
+          const meta: Record<string, unknown> = { url: devServerUrl, sourceDir, buildDir: effectiveBuildDir }
           if (entrypointsDir) meta.entrypointsDir = entrypointsDir
           if (reactRefresh) meta.reactRefresh = true
           fs.writeFileSync(devMetaPath, JSON.stringify(meta))

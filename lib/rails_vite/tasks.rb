@@ -31,7 +31,9 @@ module RailsVite
     end
 
     def build_command
-      command_for(:build)
+      cmd = command_for(:build)
+      cmd += " --mode test" if Rails.env.test?
+      cmd
     end
 
     def tool
