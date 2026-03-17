@@ -247,7 +247,7 @@ describe('rails-vite-plugin/jsbundling', () => {
     expect(config!.publicDir).toBe(false)
   })
 
-  it('uses unhashed entry filenames', () => {
+  it('uses hashed entry filenames with underscore prefix', () => {
     const plugin = jsbundling({ input: 'application.js' })
 
     const config = getConfig(plugin)
@@ -256,7 +256,7 @@ describe('rails-vite-plugin/jsbundling', () => {
     expect(output.chunkFileNames).toBe('[name]-[hash].js')
     // entryFileNames is a function for CSS facade handling
     const entryFileNames = output.entryFileNames as Function
-    expect(entryFileNames({ facadeModuleId: 'app/javascript/application.js' })).toBe('[name].js')
+    expect(entryFileNames({ facadeModuleId: 'app/javascript/application.js' })).toBe('_[name]-[hash].js')
   })
 
   it('prefixes CSS facade entry filenames with _css_', () => {
@@ -267,7 +267,7 @@ describe('rails-vite-plugin/jsbundling', () => {
     const entryFileNames = output.entryFileNames as Function
     expect(entryFileNames({ facadeModuleId: 'app/javascript/styles.css' })).toBe('_css_[name].js')
     expect(entryFileNames({ facadeModuleId: 'app/javascript/theme.scss' })).toBe('_css_[name].js')
-    expect(entryFileNames({ facadeModuleId: null })).toBe('[name].js')
+    expect(entryFileNames({ facadeModuleId: null })).toBe('_[name]-[hash].js')
   })
 
   it('uses custom outputDir', () => {
@@ -563,19 +563,28 @@ describe('rails-vite-plugin/jsbundling', () => {
 
   // --- writeBundle ---
 
-  it('copies entry JS and extracted CSS to assetPipelineDir', () => {
+  it('writes shim for entry JS and copies extracted CSS to assetPipelineDir', () => {
     const plugin = jsbundling({ input: 'application.js' })
     getConfig(plugin)
     callConfigResolved(plugin)
 
     const bundle = {
-      'application.js': { type: 'chunk', isEntry: true },
+      '_application-abc123.js': { type: 'chunk', isEntry: true, name: 'application' },
       'application.css': { type: 'asset' },
     }
     callWriteBundle(plugin, bundle)
 
+    // JS entry gets a shim (not a copy)
+    const writeCalls = vi.mocked(fs.writeFileSync).mock.calls
+    const shimInOutDir = writeCalls.find(([p]) => p === path.join('public/assets', 'application.js'))
+    const shimInPipeline = writeCalls.find(([p]) => p === path.join('app/assets/builds', 'application.js'))
+    expect(shimInOutDir).toBeDefined()
+    expect(shimInPipeline).toBeDefined()
+    expect(String(shimInOutDir![1])).toBe('import "./_application-abc123.js";export * from "./_application-abc123.js";\n')
+    expect(String(shimInPipeline![1])).toBe('import "./_application-abc123.js";export * from "./_application-abc123.js";\n')
+
+    // CSS entry is still copied
     const copiedDests = vi.mocked(fs.copyFileSync).mock.calls.map(([, dest]) => dest)
-    expect(copiedDests).toContain(path.join('app/assets/builds', 'application.js'))
     expect(copiedDests).toContain(path.join('app/assets/builds', 'application.css'))
   })
 
@@ -585,14 +594,13 @@ describe('rails-vite-plugin/jsbundling', () => {
     callConfigResolved(plugin)
 
     const bundle = {
-      'application.js': { type: 'chunk', isEntry: true },
+      '_application-abc123.js': { type: 'chunk', isEntry: true, name: 'application' },
       'application.css': { type: 'asset' },
       'vendor-abc123.css': { type: 'asset' },
     }
     callWriteBundle(plugin, bundle)
 
     const copiedDests = vi.mocked(fs.copyFileSync).mock.calls.map(([, dest]) => dest)
-    expect(copiedDests).toContain(path.join('app/assets/builds', 'application.js'))
     expect(copiedDests).toContain(path.join('app/assets/builds', 'application.css'))
     expect(copiedDests).not.toContainEqual(expect.stringContaining('vendor'))
   })
@@ -603,14 +611,17 @@ describe('rails-vite-plugin/jsbundling', () => {
     callConfigResolved(plugin)
 
     const bundle = {
-      'application.js': { type: 'chunk', isEntry: true },
+      '_application-abc123.js': { type: 'chunk', isEntry: true, name: 'application' },
       'shared-chunk-abc.js': { type: 'chunk', isEntry: false },
     }
     callWriteBundle(plugin, bundle)
 
-    const copiedDests = vi.mocked(fs.copyFileSync).mock.calls.map(([, dest]) => dest)
-    expect(copiedDests).toHaveLength(1)
-    expect(copiedDests[0]).toContain('application.js')
+    // Only the shim should be written, not the shared chunk
+    const writeCalls = vi.mocked(fs.writeFileSync).mock.calls
+    const pipelineWrites = writeCalls.filter(([p]) => String(p).includes('app/assets/builds'))
+    expect(pipelineWrites).toHaveLength(1)
+    expect(String(pipelineWrites[0][0])).toContain('application.js')
+    expect(fs.copyFileSync).not.toHaveBeenCalled()
   })
 
   it('removes CSS facade JS chunks from bundle', () => {
