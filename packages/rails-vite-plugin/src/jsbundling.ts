@@ -121,7 +121,7 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
                 if (chunkInfo.facadeModuleId && cssExtensions.test(chunkInfo.facadeModuleId)) {
                   return `${CSS_FACADE_PREFIX}[name].js`
                 }
-                return '[name].js'
+                return '_[name]-[hash].js'
               },
               chunkFileNames: '[name]-[hash].js',
               assetFileNames: '[name][extname]',
@@ -164,14 +164,9 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
       // SSR bundles are Node.js server code — not served to browsers.
       if (resolvedConfig.build.ssr) return
 
-      // Copy entry files (JS + CSS) to the asset pipeline directory
-      // so Propshaft/Sprockets can serve them via Rails helpers.
-      // Chunks stay in outputDir and are served directly by the web server.
       fs.mkdirSync(assetPipelineDir, { recursive: true })
 
       const outDir = resolvedConfig.build.outDir
-      // Only copy CSS files that correspond to entries (entry CSS or CSS extracted
-      // from JS entries). Shared chunk CSS stays in outputDir.
       const entryNames = new Set(entries.map(e => e.name))
 
       for (const [fileName, chunk] of Object.entries(bundle)) {
@@ -179,7 +174,22 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
         const isEntryCss = chunk.type === 'asset' && cssExtensions.test(fileName)
           && entryNames.has(fileName.replace(/\.[^.]+$/, ''))
 
-        if (isEntryJs || isEntryCss) {
+        if (isEntryJs) {
+          // JS entries are built as _[name]-[hash].js (content-hashed).
+          // Write a thin shim as [name].js for the asset pipeline so that
+          // Propshaft/Sprockets can serve it via javascript_include_tag.
+          //
+          // Why: Propshaft digests entry filenames (inertia.js → inertia-abc123.js)
+          // but cannot rewrite import paths inside Vite's chunks. Without the shim,
+          // the <script> tag and chunk imports resolve to different ES module
+          // instances — duplicating React, Inertia, and other stateful singletons.
+          // The shim ensures both paths chain to the same _[name]-[hash].js module.
+          const shimName = (chunk as { name: string }).name + '.js'
+          const shim = `import "./${fileName}";export * from "./${fileName}";\n`
+          fs.writeFileSync(path.join(outDir, shimName), shim)
+          fs.writeFileSync(path.join(assetPipelineDir, shimName), shim)
+        } else if (isEntryCss) {
+          // Copy entry CSS to the asset pipeline. Shared chunk CSS stays in outputDir.
           const src = path.join(outDir, fileName)
           const dest = path.join(assetPipelineDir, fileName)
           fs.mkdirSync(path.dirname(dest), { recursive: true })
