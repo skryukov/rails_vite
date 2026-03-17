@@ -2,9 +2,19 @@
 # frozen_string_literal: true
 
 require_relative "../lib/rails_vite/version"
+require "json"
 
-version = RailsVite::VERSION
+PACKAGES = %w[gem npm].freeze
+
 dry_run = ARGV.delete("--dry-run")
+packages = ARGV.select { |arg| PACKAGES.include?(arg) }.tap { |args| ARGV.reject! { |a| args.include?(a) } }
+packages = PACKAGES if packages.empty?
+
+gem_version = RailsVite::VERSION
+npm_version = JSON.parse(File.read("packages/rails-vite-plugin/package.json"))["version"]
+
+publish_gem = packages.include?("gem")
+publish_npm = packages.include?("npm")
 
 # Check for uncommitted changes
 unless `git status --porcelain`.strip.empty?
@@ -15,7 +25,9 @@ unless `git status --porcelain`.strip.empty?
   puts
 end
 
-puts "#{dry_run ? "[DRY RUN] " : ""}Publishing rails_vite v#{version}"
+puts "#{dry_run ? "[DRY RUN] " : ""}Publishing:"
+puts "  rails_vite gem v#{gem_version}" if publish_gem
+puts "  rails-vite-plugin npm v#{npm_version}" if publish_npm
 puts
 
 # Run tests
@@ -28,29 +40,66 @@ Dir.chdir("packages/rails-vite-plugin") do
   system("npm", "test", exception: true)
 end
 
-# Publish gem
-puts
-puts "==> Publishing gem to RubyGems..."
-system("gem", "build", "rails_vite.gemspec", exception: true)
-if dry_run
-  puts "gem push rails_vite-#{version}.gem (skipped)"
-else
-  system("gem", "push", "rails_vite-#{version}.gem", exception: true)
+# Check registry credentials before publishing
+unless dry_run
+  if publish_gem
+    gem_logged_in = system("gem", "signin", "--silent", in: File::NULL, out: File::NULL, err: File::NULL) || system("gem", "owner", "rails_vite", "--silent", in: File::NULL, out: File::NULL, err: File::NULL)
+    abort "ERROR: Not logged in to RubyGems. Run `gem signin` first." unless gem_logged_in
+  end
+
+  if publish_npm
+    npm_logged_in = system("npm", "whoami", out: File::NULL, err: File::NULL)
+    abort "ERROR: Not logged in to npm. Run `npm login` first." unless npm_logged_in
+  end
 end
-File.delete("rails_vite-#{version}.gem")
+
+# Publish gem
+if publish_gem
+  puts
+  puts "==> Publishing gem to RubyGems..."
+  system("gem", "build", "rails_vite.gemspec", exception: true)
+  if dry_run
+    puts "gem push rails_vite-#{gem_version}.gem (skipped)"
+  else
+    system("gem", "push", "rails_vite-#{gem_version}.gem", exception: true)
+  end
+  File.delete("rails_vite-#{gem_version}.gem")
+
+  tag = "rails_vite@#{gem_version}"
+  puts "==> Tagging #{tag}..."
+  if dry_run
+    puts "git tag #{tag} (skipped)"
+  else
+    system("git", "tag", tag, exception: true)
+    system("git", "push", "origin", tag, exception: true)
+  end
+end
 
 # Publish npm package
-puts
-puts "==> Publishing npm package..."
-Dir.chdir("packages/rails-vite-plugin") do
-  system("npm", "run", "build", exception: true)
+if publish_npm
+  puts
+  puts "==> Publishing npm package..."
+  Dir.chdir("packages/rails-vite-plugin") do
+    system("npm", "run", "build", exception: true)
+    if dry_run
+      puts "npm publish --access public (skipped)"
+    else
+      npm_tag = npm_version.include?("beta") ? ["--tag", "beta"] : []
+      system("npm", "publish", "--access", "public", *npm_tag, exception: true)
+    end
+  end
+
+  tag = "rails-vite-plugin@#{npm_version}"
+  puts "==> Tagging #{tag}..."
   if dry_run
-    puts "npm publish --access public (skipped)"
+    puts "git tag #{tag} (skipped)"
   else
-    npm_tag = version.include?("beta") ? ["--tag", "beta"] : []
-    system("npm", "publish", "--access", "public", *npm_tag, exception: true)
+    system("git", "tag", tag, exception: true)
+    system("git", "push", "origin", tag, exception: true)
   end
 end
 
 puts
-puts "#{dry_run ? "[DRY RUN] " : ""}Done! Published rails_vite v#{version}"
+puts "#{dry_run ? "[DRY RUN] " : ""}Done!"
+puts "  rails_vite@#{gem_version} published to RubyGems" if publish_gem
+puts "  rails-vite-plugin@#{npm_version} published to npm" if publish_npm
