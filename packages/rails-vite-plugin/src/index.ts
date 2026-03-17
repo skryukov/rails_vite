@@ -11,9 +11,10 @@ import {
 } from 'vite'
 
 import type { InputOption } from './shared/types.js'
+import { ORIGIN_PLACEHOLDER } from './shared/types.js'
 import { resolveInput, detectEntrypointsDir, discoverEntrypointInputs, detectEntrypoint } from './shared/entries.js'
 import { resolveAlias } from './shared/alias.js'
-import { resolveDevServerUrl, isAddressInfo } from './shared/dev-server.js'
+import { resolveDevServerUrl, isAddressInfo, replaceOriginPlaceholder } from './shared/dev-server.js'
 import { resolveBundlerOptionsKey, getUserBundlerInput } from './shared/bundler-compat.js'
 import { ensureCommandShouldRunInEnvironment } from './shared/env-guard.js'
 import { refreshPaths, resolveRefreshPaths } from './shared/refresh.js'
@@ -51,6 +52,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
 
   let resolvedConfig: ResolvedConfig
   let reactRefresh = false
+  let devServerUrl: string | null = null
 
   return {
     name: 'rails-vite',
@@ -78,6 +80,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
           assetsInlineLimit: userConfig.build?.assetsInlineLimit ?? 0,
         },
         server: {
+          origin: command === 'serve' ? (userConfig.server?.origin ?? ORIGIN_PLACEHOLDER) : undefined,
           cors: userConfig.server?.cors ?? {
             origin: userConfig.server?.origin ?? defaultAllowedOrigins,
           },
@@ -106,13 +109,16 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
       )
     },
 
+    transform(code) {
+      return replaceOriginPlaceholder(code, devServerUrl)
+    },
+
     configureServer(server) {
       server.httpServer?.once('listening', () => {
         const address = server.httpServer?.address()
 
         if (isAddressInfo(address)) {
-          const devServerUrl = resolveDevServerUrl(address, resolvedConfig)
-          resolvedConfig.server.origin = devServerUrl
+          devServerUrl = resolveDevServerUrl(address, resolvedConfig)
 
           const meta: Record<string, unknown> = { url: devServerUrl, sourceDir }
           if (entrypointsDir) meta.entrypointsDir = entrypointsDir

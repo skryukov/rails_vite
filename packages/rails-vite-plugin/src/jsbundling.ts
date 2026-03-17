@@ -11,9 +11,10 @@ import {
 } from 'vite'
 
 import type { InputOption, ResolvedEntry } from './shared/types.js'
+import { ORIGIN_PLACEHOLDER } from './shared/types.js'
 import { resolveEntries, entriesToRollupInput, prefixWithSourceDir, detectEntrypointsDir, discoverEntrypointInputs, detectEntrypoint, isEntrypointFile } from './shared/entries.js'
 import { resolveAlias } from './shared/alias.js'
-import { resolveDevServerUrl, isAddressInfo } from './shared/dev-server.js'
+import { resolveDevServerUrl, isAddressInfo, replaceOriginPlaceholder } from './shared/dev-server.js'
 import { resolveBundlerOptionsKey, getUserBundlerInput } from './shared/bundler-compat.js'
 import { ensureCommandShouldRunInEnvironment } from './shared/env-guard.js'
 import { refreshPaths, resolveRefreshPaths } from './shared/refresh.js'
@@ -65,6 +66,7 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
 
   let resolvedConfig: ResolvedConfig
   let reactRefresh = false
+  let devServerUrl: string | null = null
 
   // Track stubs written in dev so we can clean them up
   const writtenStubs: string[] = []
@@ -135,6 +137,7 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
           cssCodeSplit: true,
         },
         server: {
+          origin: command === 'serve' ? (userConfig.server?.origin ?? ORIGIN_PLACEHOLDER) : undefined,
           cors: userConfig.server?.cors ?? {
             origin: userConfig.server?.origin ?? defaultAllowedOrigins,
           },
@@ -191,8 +194,11 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
       }
     },
 
+    transform(code) {
+      return replaceOriginPlaceholder(code, devServerUrl)
+    },
+
     configureServer(server) {
-      let devServerUrl: string | null = null
       let syncTimer: ReturnType<typeof setTimeout> | null = null
 
       // Re-discover entries from the entrypoints dir and regenerate all stubs.
