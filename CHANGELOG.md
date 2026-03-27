@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## rails-vite-plugin@0.2.3 - 2026-03-27
+
+### Fixed
+
+- Fix double `assets/` prefix in SSR `?url` imports in jsbundling mode ([@skryukov])
+- Support glob patterns in input entries ([@skryukov])
+
 ## rails-vite-plugin@0.2.2 - 2026-03-17
 
 ### Fixed
