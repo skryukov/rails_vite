@@ -96,6 +96,9 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
               outDir: userConfig.build?.outDir ?? ssrConfig.outDir,
               [bundlerOptionsKey]: {
                 input: userBundlerInput ?? ssrConfig.entry,
+                output: {
+                  assetFileNames: '[name][extname]',
+                },
               },
             },
           } : {}),
