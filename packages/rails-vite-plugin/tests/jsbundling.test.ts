@@ -91,6 +91,9 @@ vi.mock('fs', async () => {
         if (filePath.endsWith('app/frontend/application.ts')) return true
         // Mock: app/assets/entrypoints directory exists
         if (filePath.endsWith('app/assets/entrypoints')) return true
+        // Mock: app/javascript/pages directory exists (for glob tests)
+        if (filePath.endsWith('app/javascript/pages')) return true
+        if (filePath.endsWith('app/javascript/pages/nested')) return true
         return actual.existsSync(filePath)
       },
       readdirSync: (dir: string, options?: { withFileTypes: boolean }) => {
@@ -100,6 +103,19 @@ vi.mock('fs', async () => {
             { name: 'application.css', isDirectory: () => false },
             { name: 'README.md', isDirectory: () => false },
             { name: 'admin', isDirectory: () => true },
+          ]
+        }
+        if (dir.endsWith('app/javascript/pages') && options?.withFileTypes) {
+          return [
+            { name: 'home.ts', isFile: () => true, isDirectory: () => false },
+            { name: 'about.tsx', isFile: () => true, isDirectory: () => false },
+            { name: 'styles.css', isFile: () => true, isDirectory: () => false },
+            { name: 'nested', isFile: () => false, isDirectory: () => true },
+          ]
+        }
+        if (dir.endsWith('app/javascript/pages/nested') && options?.withFileTypes) {
+          return [
+            { name: 'deep.ts', isFile: () => true, isDirectory: () => false },
           ]
         }
         if (dir.endsWith('app/assets/entrypoints/admin') && options?.withFileTypes) {
@@ -204,6 +220,61 @@ describe('rails-vite-plugin/jsbundling', () => {
       'app/assets/entrypoints/application.css',
       'app/assets/entrypoints/admin/index.tsx',
     ])
+  })
+
+  it('expands glob patterns in input', () => {
+    const plugin = jsbundling({ input: 'pages/*.ts' })
+
+    const config = getConfig(plugin)
+    expect(config!.build!.rollupOptions!.input).toBe('app/javascript/pages/home.ts')
+  })
+
+  it('expands glob patterns matching multiple files', () => {
+    const plugin = jsbundling({ input: 'pages/*.{ts,tsx}' })
+
+    const config = getConfig(plugin)
+    expect(config!.build!.rollupOptions!.input).toEqual([
+      'app/javascript/pages/home.ts',
+      'app/javascript/pages/about.tsx',
+    ])
+  })
+
+  it('expands glob in array input alongside non-glob entries', () => {
+    const plugin = jsbundling({ input: ['application.js', 'pages/*.ts'] })
+
+    const config = getConfig(plugin)
+    expect(config!.build!.rollupOptions!.input).toEqual([
+      'app/javascript/application.js',
+      'app/javascript/pages/home.ts',
+    ])
+  })
+
+  it('expands ** recursive glob patterns', () => {
+    const plugin = jsbundling({ input: 'pages/**/*.ts' })
+
+    const config = getConfig(plugin)
+    expect(config!.build!.rollupOptions!.input).toEqual([
+      'app/javascript/pages/home.ts',
+      'app/javascript/pages/nested/deep.ts',
+    ])
+  })
+
+  it('expands ** recursive glob with multiple extensions', () => {
+    const plugin = jsbundling({ input: 'pages/**/*.{ts,tsx}' })
+
+    const config = getConfig(plugin)
+    expect(config!.build!.rollupOptions!.input).toEqual([
+      'app/javascript/pages/home.ts',
+      'app/javascript/pages/about.tsx',
+      'app/javascript/pages/nested/deep.ts',
+    ])
+  })
+
+  it('returns empty for glob matching no files', () => {
+    const plugin = jsbundling({ input: 'nonexistent/*.ts' })
+
+    const config = getConfig(plugin)
+    expect(config!.build!.rollupOptions!.input).toEqual([])
   })
 
   it('filters non-entrypoint files from discovery', () => {

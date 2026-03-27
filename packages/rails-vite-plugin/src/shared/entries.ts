@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import picomatch from 'picomatch'
 import type { InputOption, ResolvedEntry } from './types.js'
 import { cssExtensionList } from './css.js'
 
@@ -18,7 +19,8 @@ export function resolveEntries(input: InputOption, sourceDir: string): ResolvedE
     }))
   }
 
-  const inputs = Array.isArray(input) ? input : [input]
+  const rawInputs = Array.isArray(input) ? input : [input]
+  const inputs = rawInputs.flatMap(entry => expandGlob(entry, sourceDir))
   const sourcePaths = inputs.map(entry => prefixWithSourceDir(entry, sourceDir))
   const commonPrefix = detectCommonEntryPrefix(sourcePaths, sourceDir)
 
@@ -79,6 +81,56 @@ export function detectEntrypoint(sourceDir: string): string {
     }
   }
   return 'application.js'
+}
+
+function isGlob(pattern: string): boolean {
+  return /[*?{]/.test(pattern)
+}
+
+function expandGlob(entry: string, sourceDir: string): string[] {
+  if (!isGlob(entry)) return [entry]
+
+  const matcher = picomatch(entry)
+
+  if (entry.includes('**')) {
+    // Recursive: find the static prefix directory, then walk it
+    const parts = entry.split('/')
+    const staticParts = []
+    for (const part of parts) {
+      if (isGlob(part)) break
+      staticParts.push(part)
+    }
+    const baseDir = staticParts.length > 0
+      ? path.join(sourceDir, ...staticParts)
+      : sourceDir
+    if (!fs.existsSync(baseDir)) return []
+
+    return walkDir(baseDir, sourceDir).filter(f => matcher(f))
+  }
+
+  // Non-recursive: single directory match
+  const dir = path.join(sourceDir, path.dirname(entry))
+  const pattern = path.basename(entry)
+  const fileMatcher = picomatch(pattern)
+
+  if (!fs.existsSync(dir)) return []
+
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .filter(f => f.isFile() && fileMatcher(f.name))
+    .map(f => path.relative(sourceDir, path.join(dir, f.name)))
+}
+
+function walkDir(dir: string, baseDir: string): string[] {
+  const results: string[] = []
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      results.push(...walkDir(full, baseDir))
+    } else if (entry.isFile()) {
+      results.push(path.relative(baseDir, full))
+    }
+  }
+  return results
 }
 
 function discoverEntrypoints(dir: string, base: string = dir): string[] {
