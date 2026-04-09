@@ -108,6 +108,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
       const outDir = resolvedConfig.build.outDir
       const meta: Record<string, unknown> = { sourceDir, buildDir: effectiveBuildDir }
       if (entrypointsDir) meta.entrypointsDir = entrypointsDir
+      if (resolvedSsr) meta.ssrOutputDir = ssrOutDir
       fs.writeFileSync(path.join(outDir, 'rails-vite.json'), JSON.stringify(meta))
     },
 
@@ -124,6 +125,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
 
           const meta: Record<string, unknown> = { url: devServerUrl, sourceDir, buildDir: effectiveBuildDir }
           if (entrypointsDir) meta.entrypointsDir = entrypointsDir
+          if (resolvedSsr) meta.ssrOutputDir = ssrOutDir
           if (reactRefresh) meta.reactRefresh = true
           fs.writeFileSync(devMetaPath, JSON.stringify(meta))
 

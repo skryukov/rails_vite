@@ -42,6 +42,10 @@ module RailsVite
       plugin_meta["url"]
     end
 
+    def ssr_output_dir
+      plugin_meta["ssrOutputDir"]
+    end
+
     def react_refresh?
       plugin_meta["reactRefresh"] == true
     end

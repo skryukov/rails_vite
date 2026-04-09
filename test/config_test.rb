@@ -111,4 +111,31 @@ class ConfigTest < Minitest::Test
       refute @config.react_refresh?
     end
   end
+
+  def test_ssr_output_dir_nil_by_default
+    assert_nil @config.ssr_output_dir
+  end
+
+  def test_ssr_output_dir_from_dev_meta
+    Dir.mktmpdir do |dir|
+      meta = File.join(dir, "rails-vite.json")
+      File.write(meta, '{"url":"http://localhost:5173","sourceDir":"app/javascript","ssrOutputDir":"ssr"}')
+      @config.dev_meta_path = Pathname.new(meta)
+
+      assert_equal "ssr", @config.ssr_output_dir
+    end
+  end
+
+  def test_ssr_output_dir_from_build_meta
+    Dir.mktmpdir do |dir|
+      vite_dir = File.join(dir, ".vite")
+      FileUtils.mkdir_p(vite_dir)
+      File.write(File.join(vite_dir, "manifest.json"), "{}")
+      File.write(File.join(vite_dir, "rails-vite.json"), '{"sourceDir":"app/javascript","ssrOutputDir":"ssr"}')
+
+      @config.manifest_path = Pathname.new(File.join(vite_dir, "manifest.json"))
+
+      assert_equal "ssr", @config.ssr_output_dir
+    end
+  end
 end
