@@ -251,6 +251,7 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
           if (devMetaPath) {
             const meta: Record<string, unknown> = { url: devServerUrl, sourceDir }
             if (epDir) meta.entrypointsDir = epDir
+            if (ssrConfig) meta.ssrOutputDir = ssrConfig.outDir
             if (reactRefresh) meta.reactRefresh = true
             meta.jsbundling = true
             fs.mkdirSync(path.dirname(devMetaPath), { recursive: true })
