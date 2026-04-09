@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## rails_vite@0.2.2 / rails-vite-plugin@0.2.4 - 2026-04-09
+
+### Added
+
+- Expose SSR output directory configuration ([@skryukov])
+
 ## rails-vite-plugin@0.2.3 - 2026-03-27
 
 ### Fixed
