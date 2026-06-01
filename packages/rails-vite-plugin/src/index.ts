@@ -20,7 +20,7 @@ import { ensureCommandShouldRunInEnvironment } from './shared/env-guard.js'
 import { refreshPaths, resolveRefreshPaths } from './shared/refresh.js'
 import { readDevServerIndexHtml } from './shared/dev-server-page.js'
 import { resolveNoExternal } from './shared/ssr.js'
-import { bindExitHandler } from './shared/cleanup.js'
+import { bindExitHandler, removeOwnedFile } from './shared/cleanup.js'
 
 export type { InputOption }
 export { refreshPaths }
@@ -123,11 +123,15 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
         if (isAddressInfo(address)) {
           devServerUrl = resolveDevServerUrl(address, resolvedConfig)
 
-          const meta: Record<string, unknown> = { url: devServerUrl, sourceDir, buildDir: effectiveBuildDir }
+          const meta: Record<string, unknown> = { url: devServerUrl, sourceDir, buildDir: effectiveBuildDir, pid: process.pid }
           if (entrypointsDir) meta.entrypointsDir = entrypointsDir
           if (resolvedSsr) meta.ssrOutputDir = ssrOutDir
           if (reactRefresh) meta.reactRefresh = true
           fs.writeFileSync(devMetaPath, JSON.stringify(meta))
+
+          bindExitHandler(() => {
+            removeOwnedFile(devMetaPath)
+          })
 
           setTimeout(() => {
             server.config.logger.info(
@@ -135,10 +139,6 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
             )
           }, 100)
         }
-      })
-
-      bindExitHandler(() => {
-        fs.rmSync(devMetaPath, { force: true })
       })
 
       // Watch view templates for full-page reload
