@@ -67,6 +67,7 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
   let resolvedConfig: ResolvedConfig
   let reactRefresh = false
   let devServerUrl: string | null = null
+  let devServerEnv: Record<string, string> = {}
 
   // Track stubs written in dev so we can clean them up
   const writtenStubs: string[] = []
@@ -76,9 +77,7 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
     enforce: 'post',
 
     config(userConfig: UserConfig, { command, mode, isSsrBuild }: ConfigEnv): UserConfig {
-      const env = loadEnv(mode, userConfig.envDir || process.cwd(), '')
-
-      ensureCommandShouldRunInEnvironment(command, env, 'rails-vite-plugin/jsbundling')
+      devServerEnv = loadEnv(mode, userConfig.envDir || process.cwd(), '')
 
       // @ts-expect-error -- `this.meta.rolldownVersion` exists in Vite 8+
       const bundlerOptionsKey = resolveBundlerOptionsKey(this.meta)
@@ -206,6 +205,8 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
     },
 
     configureServer(server) {
+      ensureCommandShouldRunInEnvironment('serve', devServerEnv, 'rails-vite-plugin/jsbundling')
+
       let syncTimer: ReturnType<typeof setTimeout> | null = null
 
       // Re-discover entries from the entrypoints dir and regenerate all stubs.
