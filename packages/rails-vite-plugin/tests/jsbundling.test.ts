@@ -550,20 +550,36 @@ describe('rails-vite-plugin/jsbundling', () => {
 
   // --- Environment guards ---
 
-  it('throws in CI environment during serve', () => {
+  it('allows config resolution in CI environment during serve', () => {
     process.env.CI = 'true'
     const plugin = jsbundling({ input: 'application.js' })
 
-    expect(() => getConfig(plugin, {}, SERVE)).toThrowError(
+    expect(() => getConfig(plugin, {}, SERVE)).not.toThrow()
+  })
+
+  it('throws when configuring dev server in CI environment', () => {
+    process.env.CI = 'true'
+    const plugin = jsbundling({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+
+    expect(() => (plugin.configureServer as Function)({})).toThrowError(
       'should not run the Vite dev server in CI',
     )
   })
 
-  it('throws in production environment during serve', () => {
+  it('allows config resolution in production environment during serve', () => {
     process.env.RAILS_ENV = 'production'
     const plugin = jsbundling({ input: 'application.js' })
 
-    expect(() => getConfig(plugin, {}, SERVE)).toThrowError(
+    expect(() => getConfig(plugin, {}, SERVE)).not.toThrow()
+  })
+
+  it('throws when configuring dev server in production environment', () => {
+    process.env.RAILS_ENV = 'production'
+    const plugin = jsbundling({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+
+    expect(() => (plugin.configureServer as Function)({})).toThrowError(
       'should not run the Vite dev server in production',
     )
   })
