@@ -15,7 +15,7 @@ import { ORIGIN_PLACEHOLDER } from './shared/types.js'
 import { resolveInput, detectEntrypointsDir, discoverEntrypointInputs, detectEntrypoint } from './shared/entries.js'
 import { resolveAlias } from './shared/alias.js'
 import { resolveDevServerUrl, isAddressInfo, replaceOriginPlaceholder } from './shared/dev-server.js'
-import { resolveBundlerOptionsKey, getUserBundlerInput } from './shared/bundler-compat.js'
+import { resolveBundlerOptionsKey, getUserBundlerInput, getResolvedBundlerInput, normalizeBundlerInput } from './shared/bundler-compat.js'
 import { ensureCommandShouldRunInEnvironment } from './shared/env-guard.js'
 import { refreshPaths, resolveRefreshPaths } from './shared/refresh.js'
 import { readDevServerIndexHtml } from './shared/dev-server-page.js'
@@ -107,6 +107,8 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
 
       const outDir = resolvedConfig.build.outDir
       const meta: Record<string, unknown> = { sourceDir, buildDir: effectiveBuildDir }
+      const buildInputs = normalizeBundlerInput(getResolvedBundlerInput(resolvedConfig.build))
+      if (buildInputs.length) meta.buildInputs = buildInputs
       if (entrypointsDir) meta.entrypointsDir = entrypointsDir
       if (resolvedSsr) meta.ssrOutputDir = ssrOutDir
       fs.writeFileSync(path.join(outDir, 'rails-vite.json'), JSON.stringify(meta))

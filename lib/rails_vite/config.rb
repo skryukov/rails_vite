@@ -16,6 +16,10 @@ module RailsVite
       @manifest_path || Rails.root.join("public", build_dir, "manifest.json")
     end
 
+    def auto_build_cache_path
+      manifest_path.dirname.join("rails-vite-auto-build.json")
+    end
+
     def asset_prefix
       @asset_prefix || "/#{build_dir}"
     end
@@ -26,6 +30,10 @@ module RailsVite
 
     def entrypoints_dir
       plugin_meta["entrypointsDir"]
+    end
+
+    def build_inputs
+      Array(plugin_meta["buildInputs"]).select { |input| input.is_a?(String) }
     end
 
     def auto_build?
