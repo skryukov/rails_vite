@@ -886,6 +886,19 @@ describe('rails-vite-plugin/jsbundling', () => {
     expect(bindExitHandler).toHaveBeenCalledTimes(2)
   })
 
+  it('writes an empty sourceDir to dev meta when prependSourceDirToEntries is false', () => {
+    const plugin = jsbundling({ input: 'application.js', sourceDir: 'app/frontend', prependSourceDirToEntries: false })
+    getConfig(plugin, {}, SERVE)
+    callConfigResolved(plugin)
+
+    const server = createMockServer()
+    ;(plugin.configureServer as Function)(server)
+    server._emit('listening')
+
+    const metaWrite = vi.mocked(fs.writeFileSync).mock.calls.find(([filePath]) => filePath === path.join('tmp', 'rails-vite.json'))
+    expect(JSON.parse(String(metaWrite![1]))).toMatchObject({ sourceDir: '' })
+  })
+
   // --- writeDevStubs: CSS entries ---
 
   it('writes empty CSS stubs for CSS entries', () => {

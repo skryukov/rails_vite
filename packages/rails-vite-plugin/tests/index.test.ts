@@ -499,6 +499,41 @@ describe('rails-vite-plugin', () => {
     expect(bindExitHandler).toHaveBeenCalledOnce()
   })
 
+  // --- prependSourceDirToEntries (root == sourceDir) ---
+
+  it('writes the sourceDir prefix to build meta by default', () => {
+    const plugin = rails({ input: 'application.js', sourceDir: 'app/frontend' })
+    getConfig(plugin)
+    callConfigResolved(plugin)
+    ;(plugin.writeBundle as unknown as () => void)()
+
+    const metaWrite = vi.mocked(fs.writeFileSync).mock.calls.find(([filePath]) => filePath === path.join('public/vite', 'rails-vite.json'))
+    expect(JSON.parse(String(metaWrite![1]))).toMatchObject({ sourceDir: 'app/frontend' })
+  })
+
+  it('writes an empty sourceDir to build meta when prependSourceDirToEntries is false', () => {
+    const plugin = rails({ input: 'application.js', sourceDir: 'app/frontend', prependSourceDirToEntries: false })
+    getConfig(plugin)
+    callConfigResolved(plugin)
+    ;(plugin.writeBundle as unknown as () => void)()
+
+    const metaWrite = vi.mocked(fs.writeFileSync).mock.calls.find(([filePath]) => filePath === path.join('public/vite', 'rails-vite.json'))
+    expect(JSON.parse(String(metaWrite![1]))).toMatchObject({ sourceDir: '' })
+  })
+
+  it('writes an empty sourceDir to dev meta when prependSourceDirToEntries is false', () => {
+    const plugin = rails({ input: 'application.js', sourceDir: 'app/frontend', prependSourceDirToEntries: false })
+    getConfig(plugin, {}, SERVE)
+    callConfigResolved(plugin)
+
+    const server = createMockServer()
+    callConfigureServer(plugin, server)
+    server._emit('listening')
+
+    const metaWrite = vi.mocked(fs.writeFileSync).mock.calls.find(([filePath]) => filePath === path.join('tmp', 'rails-vite.json'))
+    expect(JSON.parse(String(metaWrite![1]))).toMatchObject({ sourceDir: '' })
+  })
+
   // --- Refresh paths ---
 
   it('exports refreshPaths', () => {

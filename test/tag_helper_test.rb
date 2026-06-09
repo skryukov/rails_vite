@@ -265,6 +265,34 @@ class TagHelperTest < Minitest::Test
     assert_match %r{src="/vite/assets/application-a1b2c3d4.js"}, html
   end
 
+  # root == sourceDir (prependSourceDirToEntries: false) — bare manifest keys
+
+  def test_vite_tags_root_as_source_dir_production
+    File.write(File.join(File.dirname(@manifest_path), "rails-vite.json"),
+      '{"sourceDir":"","entrypointsDir":"entrypoints"}')
+
+    custom_manifest = {
+      "entrypoints/application.js" => {
+        "file" => "assets/application-bare.js",
+        "isEntry" => true, "css" => [], "imports" => []
+      }
+    }
+    File.write(@manifest_path, JSON.generate(custom_manifest))
+
+    html = vite_tags("application.js")
+
+    assert_match %r{src="/vite/assets/application-bare.js"}, html
+  end
+
+  def test_vite_tags_root_as_source_dir_dev_mode
+    File.write(File.join(@dir, "rails-vite.json"),
+      '{"url":"http://localhost:5173","sourceDir":"","entrypointsDir":"entrypoints"}')
+
+    html = vite_tags("application.js")
+
+    assert_match %r{src="http://localhost:5173/entrypoints/application.js"}, html
+  end
+
   # React refresh preamble tests
 
   def test_vite_tags_dev_mode_with_react_refresh
