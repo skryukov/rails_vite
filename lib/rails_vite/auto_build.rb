@@ -24,7 +24,9 @@ module RailsVite
       @mutex.synchronize do
         return unless stale?
 
-        Rails.logger.error("rails-vite: build failed") unless system(RailsVite::Tasks.build_command)
+        # Build quietly: vite's per-build summary is noise on every auto-build
+        # (e.g. each local system-test run). Warnings and errors still stream.
+        Rails.logger.error("rails-vite: build failed") unless system("#{RailsVite::Tasks.build_command} --logLevel warn")
         @cached_source_mtime = nil
         @source_mtime_checked_at = nil
       end

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 ## Unreleased
 
+### Changed
+
+- Auto builds now run quietly (`vite build --logLevel warn`) to keep system-test output clean; warnings and errors are still shown ([@skryukov])
+
 ### Fixed
 
 - Persist auto-build freshness across process restarts so repeated local system-test runs no longer rebuild unchanged assets. Freshness now derives from the build manifest's timestamp instead of in-memory state (#21) ([@skryukov], [@brodienguyen])
