@@ -109,37 +109,22 @@ CSS files are detected by extension and emit `<link rel="stylesheet">`:
 
 ### Content Security Policy
 
-Pass a `nonce` to any tag helper and it's applied to every tag it emits:
+Pass a `nonce` to any tag helper; it's applied to every tag it emits:
 
 ```erb
 <%= vite_tags "application.js", nonce: content_security_policy_nonce %>
 ```
 
-In development the Vite dev server injects its `@vite/client` script (and the
-React Fast Refresh preamble) on your first `vite_*` call. Those tags pick up the
-request's nonce automatically via `content_security_policy_nonce`, so they stay
-valid under a `strict-dynamic` policy even when your first call is a nonce-less
-stylesheet — you only need to nonce your own entry tags.
+The dev server's `@vite/client` and React Fast Refresh tags pick up the request nonce automatically, so they work under `strict-dynamic` even when your first `vite_*` call is a nonce-less stylesheet.
 
-If you run a restrictive CSP **in development** (Rails ships it disabled by
-default), the browser will block the Vite dev server unless you allow its origin.
-`RailsVite.dev_server_csp_source` returns a source that's resolved per request,
-so it tracks the dev server's real port (Vite may pick another if the default is
-taken) and contributes nothing when the server isn't running:
+Running a CSP in development? Allow the dev server's origin with `RailsVite.dev_server_csp_source` — it resolves per request, so it tracks Vite's actual port and adds nothing when the server is down:
 
 ```ruby
-# config/initializers/content_security_policy.rb
-Rails.application.configure do
-  config.content_security_policy do |policy|
-    # ...your existing directives...
-
-    if Rails.env.development?
-      policy.script_src(*policy.script_src, RailsVite.dev_server_csp_source)
-      policy.style_src(*policy.style_src, RailsVite.dev_server_csp_source)
-      # HMR websocket
-      policy.connect_src(*policy.connect_src, RailsVite.dev_server_csp_source(websocket: true))
-    end
-  end
+# config/initializers/content_security_policy.rb — inside your `policy` block
+if Rails.env.development?
+  policy.script_src(*policy.script_src, RailsVite.dev_server_csp_source)
+  policy.style_src(*policy.style_src, RailsVite.dev_server_csp_source)
+  policy.connect_src(*policy.connect_src, RailsVite.dev_server_csp_source(websocket: true)) # HMR
 end
 ```
 
