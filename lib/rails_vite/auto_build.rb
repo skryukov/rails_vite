@@ -9,7 +9,6 @@ module RailsVite
       @app = app
       @config = config
       @mutex = Mutex.new
-      @last_build_at = NEVER
       @cached_source_mtime = nil
       @source_mtime_checked_at = nil
     end
@@ -26,15 +25,17 @@ module RailsVite
         return unless stale?
 
         Rails.logger.error("rails-vite: build failed") unless system(RailsVite::Tasks.build_command)
-        @last_build_at = Time.now
         @cached_source_mtime = nil
         @source_mtime_checked_at = nil
       end
     end
 
     def stale?
+      # The manifest file's mtime is our persisted "last build" timestamp: it
+      # lives on disk, so freshness survives process restarts (e.g. a new Rails
+      # process per local system-test run) without any extra state.
       !File.exist?(@config.manifest_path) ||
-        latest_source_mtime > @last_build_at
+        latest_source_mtime > File.mtime(@config.manifest_path)
     end
 
     def latest_source_mtime
