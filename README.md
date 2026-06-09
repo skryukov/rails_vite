@@ -166,6 +166,12 @@ Then reference them in views:
 <%= vite_image_tag "app/assets/images/logo.png", alt: "Logo" %>
 ```
 
+**Migrating from Propshaft?** Vite resolves asset references itself, so you don't need Propshaft's `RAILS_ASSET_URL(...)` — reference assets natively and Vite fingerprints them:
+
+- In CSS: `background: url(../assets/images/logo.svg)` — resolved and hashed at build.
+- In JS: `import logoUrl from '../assets/images/logo.svg'` (or pull in a whole folder with `import.meta.glob`).
+- In views: `vite_asset_path` / `vite_image_tag`, which read the Vite manifest.
+
 ## Vite Config
 
 The install generator creates a minimal `vite.config.ts`:
