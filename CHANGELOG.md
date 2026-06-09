@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## Unreleased
+
+### Fixed
+
+- Persist auto-build freshness across process restarts so repeated local system-test runs no longer rebuild unchanged assets. Freshness now derives from the build manifest's timestamp instead of in-memory state (#21) ([@skryukov], [@brodienguyen])
+
 ## rails_vite@0.2.2 / rails-vite-plugin@0.2.4 - 2026-04-09
 
 ### Added
@@ -74,6 +80,7 @@ and this project adheres to [Semantic Versioning].
 - Initial release ([@skryukov])
 
 [@skryukov]: https://github.com/skryukov
+[@brodienguyen]: https://github.com/brodienguyen
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.0.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html

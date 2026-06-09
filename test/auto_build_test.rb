@@ -22,72 +22,103 @@ class AutoBuildTest < Minitest::Test
   end
 
   def test_builds_when_manifest_missing
-    built = false
-    stub_build(-> { built = true }) do
-      middleware = RailsVite::AutoBuild.new(@app, @config)
-      middleware.call({})
-    end
+    with_root do
+      built = false
+      stub_build(-> { built = true }) do
+        RailsVite::AutoBuild.new(@app, @config).call({})
+      end
 
-    assert built
+      assert built
+    end
   end
 
-  def test_builds_when_sources_newer_than_last_build
-    File.write(@manifest_path, "{}")
-
-    middleware = RailsVite::AutoBuild.new(@app, @config)
-
-    # Simulate a previous build
-    middleware.instance_variable_set(:@last_build_at, Time.now - 10)
+  def test_builds_when_sources_are_newer_than_manifest
+    write_manifest(mtime: Time.now - 10)
     FileUtils.touch(File.join(@source_dir, "app.js"), mtime: Time.now)
 
-    built = false
-    stub_build(-> { built = true }) do
-      middleware.call({})
-    end
+    with_root do
+      built = false
+      stub_build(-> { built = true }) do
+        RailsVite::AutoBuild.new(@app, @config).call({})
+      end
 
-    assert built
+      assert built
+    end
   end
 
-  def test_skips_build_when_manifest_fresh
-    File.write(@manifest_path, "{}")
+  def test_skips_build_when_manifest_is_newer_than_sources
+    FileUtils.touch(File.join(@source_dir, "app.js"), mtime: Time.now - 10)
+    write_manifest(mtime: Time.now)
 
-    middleware = RailsVite::AutoBuild.new(@app, @config)
-    middleware.instance_variable_set(:@last_build_at, Time.now + 10)
+    with_root do
+      built = false
+      stub_build(-> { built = true }) do
+        RailsVite::AutoBuild.new(@app, @config).call({})
+      end
 
-    built = false
-    stub_build(-> { built = true }) do
-      middleware.call({})
+      refute built
     end
+  end
 
-    refute built
+  def test_skips_build_across_instances_when_nothing_changed
+    # Issue #21: a fresh middleware instance (a new Rails process, e.g. each
+    # local system-test run) must not rebuild when assets are unchanged. The
+    # freshness signal is the manifest's on-disk mtime, so it persists.
+    FileUtils.touch(File.join(@source_dir, "app.js"), mtime: Time.now - 10)
+
+    with_root do
+      first_build = false
+      stub_build(-> {
+        first_build = true
+        write_manifest
+      }) do
+        RailsVite::AutoBuild.new(@app, @config).call({})
+      end
+
+      second_build = false
+      stub_build(-> { second_build = true }) do
+        RailsVite::AutoBuild.new(@app, @config).call({})
+      end
+
+      assert first_build
+      refute second_build
+    end
   end
 
   def test_missing_source_dir_triggers_build
     FileUtils.rm_rf(@source_dir)
-    File.write(@manifest_path, "{}")
+    write_manifest(mtime: Time.now)
 
-    middleware = RailsVite::AutoBuild.new(@app, @config)
-    middleware.instance_variable_set(:@last_build_at, Time.at(0))
+    with_root do
+      built = false
+      stub_build(-> { built = true }) do
+        RailsVite::AutoBuild.new(@app, @config).call({})
+      end
 
-    built = false
-    stub_build(-> { built = true }) do
-      middleware.call({})
+      assert built
     end
-
-    assert built
   end
 
   def test_passes_request_through_to_app
-    File.write(@manifest_path, "{}")
+    FileUtils.touch(File.join(@source_dir, "app.js"), mtime: Time.now - 10)
+    write_manifest(mtime: Time.now)
 
-    middleware = RailsVite::AutoBuild.new(@app, @config)
-    middleware.instance_variable_set(:@last_build_at, Time.now + 10)
-
-    status, = middleware.call({})
-    assert_equal 200, status
+    with_root do
+      status, = RailsVite::AutoBuild.new(@app, @config).call({})
+      assert_equal 200, status
+    end
   end
 
   private
+
+  def with_root(&block)
+    Rails.stub(:root, Pathname.new(@dir), &block)
+  end
+
+  def write_manifest(mtime: Time.now)
+    File.write(@manifest_path, "{}")
+    FileUtils.touch(@manifest_path, mtime: mtime)
+  end
 
   def stub_build(callback)
     RailsVite::Tasks.stub(:build_command, "true") do

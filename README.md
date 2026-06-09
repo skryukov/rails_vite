@@ -271,6 +271,8 @@ node ssr/ssr.js
 
 When the Vite dev server is not running, rails_vite automatically rebuilds assets on the first request if sources have changed. This is useful for system tests and quick checks without running `bin/dev`.
 
+Freshness is determined by comparing your source files' timestamps against the build manifest's timestamp. Since the manifest lives on disk, unchanged assets are not rebuilt across process restarts — for example, on repeated local system-test runs.
+
 Disable it:
 
 ```ruby
