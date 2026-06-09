@@ -54,15 +54,14 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
   let reactRefresh = false
   let devServerUrl: string | null = null
   let effectiveBuildDir: string
+  let devServerEnv: Record<string, string> = {}
 
   return {
     name: 'rails-vite',
     enforce: 'post',
 
     config(userConfig: UserConfig, { command, mode, isSsrBuild }: ConfigEnv): UserConfig {
-      const env = loadEnv(mode, userConfig.envDir || process.cwd(), '')
-
-      ensureCommandShouldRunInEnvironment(command, env, 'rails-vite-plugin')
+      devServerEnv = loadEnv(mode, userConfig.envDir || process.cwd(), '')
 
       // @ts-expect-error -- `this.meta.rolldownVersion` exists in Vite 8+
       const bundlerOptionsKey = resolveBundlerOptionsKey(this.meta)
@@ -117,6 +116,8 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
     },
 
     configureServer(server) {
+      ensureCommandShouldRunInEnvironment('serve', devServerEnv, 'rails-vite-plugin')
+
       server.httpServer?.once('listening', () => {
         const address = server.httpServer?.address()
 
