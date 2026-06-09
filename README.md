@@ -121,9 +121,11 @@ request's nonce automatically via `content_security_policy_nonce`, so they stay
 valid under a `strict-dynamic` policy even when your first call is a nonce-less
 stylesheet — you only need to nonce your own entry tags.
 
-To let the browser reach the dev server, allow its URL in your policy. Wrap each
-source in a lambda so it's resolved per request (the dev server may not be
-running when the app boots, and a lambda adds nothing when the URL is absent):
+If you run a restrictive CSP **in development** (Rails ships it disabled by
+default), the browser will block the Vite dev server unless you allow its origin.
+`RailsVite.dev_server_csp_source` returns a source that's resolved per request,
+so it tracks the dev server's real port (Vite may pick another if the default is
+taken) and contributes nothing when the server isn't running:
 
 ```ruby
 # config/initializers/content_security_policy.rb
@@ -132,11 +134,10 @@ Rails.application.configure do
     # ...your existing directives...
 
     if Rails.env.development?
-      dev_server = -> { RailsVite.config.dev_server_url }
-      policy.script_src(*policy.script_src, dev_server)
-      policy.style_src(*policy.style_src, dev_server)
-      # HMR websocket — http(s) -> ws(s)
-      policy.connect_src(*policy.connect_src, -> { RailsVite.config.dev_server_url&.sub(/\Ahttp/, "ws") })
+      policy.script_src(*policy.script_src, RailsVite.dev_server_csp_source)
+      policy.style_src(*policy.style_src, RailsVite.dev_server_csp_source)
+      # HMR websocket
+      policy.connect_src(*policy.connect_src, RailsVite.dev_server_csp_source(websocket: true))
     end
   end
 end

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning].
 
 ### Added
 
+- `RailsVite.dev_server_csp_source` returns a Content Security Policy source for the running Vite dev server, resolved per request so it tracks the real (possibly auto-incremented) port and adds nothing when the server is down. Pass `websocket: true` for the HMR socket (#25) ([@skryukov])
 - `prependSourceDirToEntries` plugin option for `rails()` and `jsbundling()`. Set it to `false` to use Vite's `root` as your `sourceDir` — entries are then resolved by their bare, root-relative names instead of being prefixed with `sourceDir` (#22) ([@skryukov])
 
 ### Changed
