@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import type { ConfigEnv, Plugin, UserConfig } from 'vite'
@@ -10,6 +10,18 @@ const SERVE: ConfigEnv = { command: 'serve', mode: 'development' }
 
 function getConfig(plugin: Plugin, userConfig: UserConfig = {}, env: ConfigEnv = BUILD): UserConfig {
   return (plugin.config as (config: UserConfig, env: ConfigEnv) => UserConfig)(userConfig, env)
+}
+
+function callConfigResolved(plugin: Plugin, overrides: Record<string, unknown> = {}) {
+  ;(plugin.configResolved as Function)({
+    build: { ssr: false, outDir: 'public/vite', rollupOptions: { input: 'app/javascript/application.js' } },
+    plugins: [],
+    ...overrides,
+  })
+}
+
+function callWriteBundle(plugin: Plugin) {
+  ;(plugin.writeBundle as Function)()
 }
 
 vi.mock('fs', async () => {
@@ -39,11 +51,16 @@ vi.mock('fs', async () => {
         }
         return actual.readdirSync(dir, options as Parameters<typeof actual.readdirSync>[1])
       },
+      writeFileSync: vi.fn(),
     },
   }
 })
 
 describe('rails-vite-plugin', () => {
+  beforeEach(() => {
+    vi.mocked(fs.writeFileSync).mockClear()
+  })
+
   afterEach(() => {
     delete process.env.CI
     delete process.env.RAILS_ENV
@@ -211,6 +228,52 @@ describe('rails-vite-plugin', () => {
 
     const config = getConfig(plugin, { build: { rollupOptions: { input: 'custom/entry.js' } } })
     expect(config!.build!.rollupOptions!.input).toBe('custom/entry.js')
+  })
+
+  it('writes resolved build inputs to build metadata', () => {
+    const plugin = rails({ input: ['application.js', '/absolute/admin.js'] })
+    getConfig(plugin)
+    callConfigResolved(plugin, {
+      build: {
+        ssr: false,
+        outDir: 'public/vite',
+        rollupOptions: { input: ['app/javascript/application.js', '/absolute/admin.js'] },
+      },
+    })
+
+    callWriteBundle(plugin)
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      path.join('public/vite', 'rails-vite.json'),
+      JSON.stringify({
+        sourceDir: 'app/javascript',
+        buildDir: 'vite',
+        buildInputs: ['app/javascript/application.js', '/absolute/admin.js'],
+      }),
+    )
+  })
+
+  it('writes user rollupOptions.input to build metadata', () => {
+    const plugin = rails({ input: 'application.js' })
+    getConfig(plugin, { build: { rollupOptions: { input: 'custom/entry.js' } } })
+    callConfigResolved(plugin, {
+      build: {
+        ssr: false,
+        outDir: 'public/vite',
+        rollupOptions: { input: 'custom/entry.js' },
+      },
+    })
+
+    callWriteBundle(plugin)
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      path.join('public/vite', 'rails-vite.json'),
+      JSON.stringify({
+        sourceDir: 'app/javascript',
+        buildDir: 'vite',
+        buildInputs: ['custom/entry.js'],
+      }),
+    )
   })
 
   it('respects user server.cors config', () => {

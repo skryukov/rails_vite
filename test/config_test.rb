@@ -27,6 +27,11 @@ class ConfigTest < Minitest::Test
     assert_equal Rails.root.join("public/custom/.vite/manifest.json"), @config.manifest_path
   end
 
+  def test_auto_build_cache_path
+    @config.manifest_path = Rails.root.join("public/custom/manifest.json")
+    assert_equal Rails.root.join("public/custom/rails-vite-auto-build.json"), @config.auto_build_cache_path
+  end
+
   def test_custom_asset_prefix
     @config.asset_prefix = "/custom"
     assert_equal "/custom", @config.asset_prefix
@@ -76,6 +81,23 @@ class ConfigTest < Minitest::Test
 
       assert_equal "app/frontend", @config.source_dir
     end
+  end
+
+  def test_build_inputs_from_build_meta
+    Dir.mktmpdir do |dir|
+      vite_dir = File.join(dir, ".vite")
+      FileUtils.mkdir_p(vite_dir)
+      File.write(File.join(vite_dir, "manifest.json"), "{}")
+      File.write(File.join(vite_dir, "rails-vite.json"), '{"buildInputs":["app/frontend/application.ts","/absolute/admin.ts",123]}')
+
+      @config.manifest_path = Pathname.new(File.join(vite_dir, "manifest.json"))
+
+      assert_equal ["app/frontend/application.ts", "/absolute/admin.ts"], @config.build_inputs
+    end
+  end
+
+  def test_build_inputs_empty_by_default
+    assert_equal [], @config.build_inputs
   end
 
   def test_auto_build_true_in_local_env
