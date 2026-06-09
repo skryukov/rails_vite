@@ -21,7 +21,7 @@ import { refreshPaths, resolveRefreshPaths } from './shared/refresh.js'
 import { cssExtensions } from './shared/css.js'
 import { readDevServerIndexHtml } from './shared/dev-server-page.js'
 import { resolveNoExternal } from './shared/ssr.js'
-import { bindExitHandler } from './shared/cleanup.js'
+import { bindExitHandler, removeOwnedFile } from './shared/cleanup.js'
 
 export type { InputOption }
 export { refreshPaths }
@@ -249,13 +249,17 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
 
           // Write dev meta file for progressive upgrade to the rails_vite gem
           if (devMetaPath) {
-            const meta: Record<string, unknown> = { url: devServerUrl, sourceDir }
+            const meta: Record<string, unknown> = { url: devServerUrl, sourceDir, pid: process.pid }
             if (epDir) meta.entrypointsDir = epDir
             if (ssrConfig) meta.ssrOutputDir = ssrConfig.outDir
             if (reactRefresh) meta.reactRefresh = true
             meta.jsbundling = true
             fs.mkdirSync(path.dirname(devMetaPath), { recursive: true })
             fs.writeFileSync(devMetaPath, JSON.stringify(meta))
+
+            bindExitHandler(() => {
+              removeOwnedFile(devMetaPath)
+            })
           }
 
           // Watch entrypoints dir for new/removed files and regenerate stubs
@@ -288,9 +292,6 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
           fs.rmSync(stub, { force: true })
         }
         writtenStubs.length = 0
-        if (devMetaPath) {
-          fs.rmSync(devMetaPath, { force: true })
-        }
       })
 
       // Watch view templates for full-page reload
