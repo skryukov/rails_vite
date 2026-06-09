@@ -47,8 +47,14 @@ module RailsVite
       tags = []
 
       unless @_vite_client_emitted
+        # The client/react-refresh tags are emitted once, on the first vite_*
+        # call. Their nonce must come from the request — not from whichever call
+        # happened to be first — so a nonce-less first call (e.g. a stylesheet)
+        # doesn't ship a nonce-less @vite/client under a `strict-dynamic` CSP (#25).
+        client_nonce = nonce || (content_security_policy_nonce if respond_to?(:content_security_policy_nonce))
+
         if RailsVite.config.react_refresh?
-          tags << tag.script(type: "module", nonce: nonce) {
+          tags << tag.script(type: "module", nonce: client_nonce) {
             <<~JS.squish.html_safe
               import{injectIntoGlobalHook}from'#{dev_url}/@react-refresh';
               injectIntoGlobalHook(window);
@@ -57,7 +63,7 @@ module RailsVite
             JS
           }
         end
-        tags << tag.script(src: "#{dev_url}/@vite/client", type: "module", nonce: nonce)
+        tags << tag.script(src: "#{dev_url}/@vite/client", type: "module", nonce: client_nonce)
         @_vite_client_emitted = true
       end
 

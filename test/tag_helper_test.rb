@@ -350,6 +350,43 @@ class TagHelperTest < Minitest::Test
     assert_match %r{application.js.*nonce="dev123"}, html
   end
 
+  def test_vite_dev_client_uses_request_nonce_when_first_call_nonceless
+    File.write(File.join(@dir, "rails-vite.json"), '{"url":"http://localhost:5173","sourceDir":"app/javascript"}')
+    define_singleton_method(:content_security_policy_nonce) { "req-nonce-abc" }
+
+    html = vite_stylesheet_tag("app/javascript/admin.css")
+
+    assert_match %r{@vite/client.*nonce="req-nonce-abc"}, html
+  end
+
+  def test_vite_dev_react_refresh_uses_request_nonce_when_first_call_nonceless
+    File.write(File.join(@dir, "rails-vite.json"), '{"url":"http://localhost:5173","sourceDir":"app/javascript","reactRefresh":true}')
+    define_singleton_method(:content_security_policy_nonce) { "req-nonce-abc" }
+
+    html = vite_stylesheet_tag("app/javascript/admin.css")
+
+    assert_match %r{nonce="req-nonce-abc">[^<]*@react-refresh}, html
+  end
+
+  def test_vite_dev_explicit_nonce_overrides_request_nonce
+    File.write(File.join(@dir, "rails-vite.json"), '{"url":"http://localhost:5173","sourceDir":"app/javascript"}')
+    define_singleton_method(:content_security_policy_nonce) { "req-nonce-abc" }
+
+    html = vite_javascript_tag("app/javascript/application.js", nonce: "explicit-123")
+
+    assert_match %r{@vite/client.*nonce="explicit-123"}, html
+    refute_match %r{nonce="req-nonce-abc"}, html
+  end
+
+  def test_vite_dev_client_no_nonce_without_csp
+    File.write(File.join(@dir, "rails-vite.json"), '{"url":"http://localhost:5173","sourceDir":"app/javascript"}')
+
+    html = vite_stylesheet_tag("app/javascript/admin.css")
+
+    assert_match %r{@vite/client}, html
+    refute_match %r{nonce=}, html
+  end
+
   # Proc asset host tests
 
   def test_vite_asset_path_with_proc_asset_host
