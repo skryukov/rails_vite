@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
-## Unreleased
+## rails_vite@0.2.3 / rails-vite-plugin@0.2.5 - 2026-06-09
 
 ### Added
 
@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning].
 
 - The development `@vite/client` and React Fast Refresh tags now derive their nonce from the request (`content_security_policy_nonce`) instead of inheriting whatever nonce the first `vite_*` call passed. A nonce-less first call (e.g. a stylesheet) no longer ships a nonce-less client script under a `strict-dynamic` CSP (#25) ([@skryukov])
 - Persist auto-build freshness across process restarts so repeated local system-test runs no longer rebuild unchanged assets. Freshness now derives from the build manifest's timestamp instead of in-memory state (#21) ([@skryukov], [@brodienguyen])
+- Don't delete the dev metadata file owned by another Vite process on exit, so concurrent Vite servers no longer clobber each other's dev server info (#27) ([@brodienguyen])
+- Allow Vite config to resolve in CI environments without weakening the dev-server environment guard (#28) ([@brodienguyen])
 
 ## rails_vite@0.2.2 / rails-vite-plugin@0.2.4 - 2026-04-09
 
