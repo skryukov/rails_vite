@@ -3,26 +3,78 @@ import fs from 'fs'
 import path from 'path'
 import type { ConfigEnv, Plugin, UserConfig } from 'vite'
 import rails, { refreshPaths } from '../src'
+import { bindExitHandler } from '../src/shared/cleanup'
 
 const BUILD: ConfigEnv = { command: 'build', mode: 'production' }
 const SSR_BUILD: ConfigEnv = { command: 'build', mode: 'production', isSsrBuild: true }
 const SERVE: ConfigEnv = { command: 'serve', mode: 'development' }
+type Callback = (...args: unknown[]) => void
 
 function getConfig(plugin: Plugin, userConfig: UserConfig = {}, env: ConfigEnv = BUILD): UserConfig {
   return (plugin.config as (config: UserConfig, env: ConfigEnv) => UserConfig)(userConfig, env)
 }
 
+function callConfigureServer(plugin: Plugin, server: MockServer) {
+  return (plugin.configureServer as unknown as (server: MockServer) => unknown)(server)
+}
+
 function callConfigResolved(plugin: Plugin, overrides: Record<string, unknown> = {}) {
-  ;(plugin.configResolved as Function)({
+  ;(plugin.configResolved as unknown as (config: Record<string, unknown>) => void)({
     build: { ssr: false, outDir: 'public/vite', rollupOptions: { input: 'app/javascript/application.js' } },
     plugins: [],
+    server: { hmr: false, https: false, host: 'localhost' },
     ...overrides,
   })
 }
 
-function callWriteBundle(plugin: Plugin) {
-  ;(plugin.writeBundle as Function)()
+interface MockServer {
+  httpServer?: {
+    once: (event: string, cb: Callback) => void
+    address: () => { address: string; port: number; family: string }
+  }
+  watcher: {
+    add: ReturnType<typeof vi.fn>
+    on: (event: string, cb: Callback) => void
+  }
+  config: { logger: { info: ReturnType<typeof vi.fn> } }
+  hot: { send: ReturnType<typeof vi.fn> }
+  middlewares: { use: ReturnType<typeof vi.fn> }
+  _emit: (event: string, ...args: unknown[]) => void
 }
+
+function createMockServer({ httpServer = true } = {}): MockServer {
+  const eventListeners: Record<string, Callback[]> = {}
+
+  return {
+    httpServer: httpServer
+      ? {
+          once(event: string, cb: Callback) {
+            eventListeners[event] = eventListeners[event] || []
+            eventListeners[event].push(cb)
+          },
+          address: () => ({ address: '127.0.0.1', port: 5173, family: 'IPv4' }),
+        }
+      : undefined,
+    watcher: {
+      add: vi.fn(),
+      on: vi.fn(),
+    },
+    config: { logger: { info: vi.fn() } },
+    hot: { send: vi.fn() },
+    middlewares: { use: vi.fn() },
+    _emit(event: string, ...args: unknown[]) {
+      for (const cb of eventListeners[event] || []) cb(...args)
+    },
+  }
+}
+
+function callWriteBundle(plugin: Plugin) {
+  ;(plugin.writeBundle as unknown as () => void)()
+}
+
+vi.mock('../src/shared/cleanup.js', () => ({
+  bindExitHandler: vi.fn(),
+}))
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs')
@@ -51,7 +103,9 @@ vi.mock('fs', async () => {
         }
         return actual.readdirSync(dir, options as Parameters<typeof actual.readdirSync>[1])
       },
+      readFileSync: vi.fn((filePath: string, encoding?: string) => actual.readFileSync(filePath, encoding as BufferEncoding)),
       writeFileSync: vi.fn(),
+      rmSync: vi.fn(),
     },
   }
 })
@@ -64,6 +118,10 @@ describe('rails-vite-plugin', () => {
   afterEach(() => {
     delete process.env.CI
     delete process.env.RAILS_ENV
+    vi.mocked(fs.readFileSync).mockClear()
+    vi.mocked(fs.writeFileSync).mockClear()
+    vi.mocked(fs.rmSync).mockClear()
+    vi.mocked(bindExitHandler).mockClear()
   })
 
   // --- Input handling ---
@@ -416,20 +474,36 @@ describe('rails-vite-plugin', () => {
 
   // --- Environment guards ---
 
-  it('throws in CI environment during serve', () => {
+  it('allows config resolution in CI environment during serve', () => {
     process.env.CI = 'true'
     const plugin = rails({ input: 'application.js' })
 
-    expect(() => getConfig(plugin, {}, SERVE)).toThrowError(
+    expect(() => getConfig(plugin, {}, SERVE)).not.toThrow()
+  })
+
+  it('throws when configuring dev server in CI environment', () => {
+    process.env.CI = 'true'
+    const plugin = rails({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+
+    expect(() => (plugin.configureServer as Function)({})).toThrowError(
       'should not run the Vite dev server in CI',
     )
   })
 
-  it('throws in production environment during serve', () => {
+  it('allows config resolution in production environment during serve', () => {
     process.env.RAILS_ENV = 'production'
     const plugin = rails({ input: 'application.js' })
 
-    expect(() => getConfig(plugin, {}, SERVE)).toThrowError(
+    expect(() => getConfig(plugin, {}, SERVE)).not.toThrow()
+  })
+
+  it('throws when configuring dev server in production environment', () => {
+    process.env.RAILS_ENV = 'production'
+    const plugin = rails({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+
+    expect(() => (plugin.configureServer as Function)({})).toThrowError(
       'should not run the Vite dev server in production',
     )
   })
@@ -446,6 +520,37 @@ describe('rails-vite-plugin', () => {
     const plugin = rails({ input: 'application.js' })
 
     expect(() => getConfig(plugin)).not.toThrow()
+  })
+
+  // --- configureServer: devMetaFile cleanup ---
+
+  it('does not register devMetaFile cleanup without an HTTP server', () => {
+    const plugin = rails({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+    callConfigResolved(plugin)
+
+    callConfigureServer(plugin, createMockServer({ httpServer: false }))
+
+    expect(bindExitHandler).not.toHaveBeenCalled()
+  })
+
+  it('writes pid to devMetaFile and registers cleanup after listening', () => {
+    const plugin = rails({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+    callConfigResolved(plugin)
+
+    const server = createMockServer()
+    callConfigureServer(plugin, server)
+    server._emit('listening')
+
+    const metaWrite = vi.mocked(fs.writeFileSync).mock.calls.find(([filePath]) => filePath === path.join('tmp', 'rails-vite.json'))
+    expect(metaWrite).toBeDefined()
+    expect(JSON.parse(String(metaWrite![1]))).toMatchObject({
+      url: 'http://localhost:5173',
+      sourceDir: 'app/javascript',
+      pid: process.pid,
+    })
+    expect(bindExitHandler).toHaveBeenCalledOnce()
   })
 
   // --- Refresh paths ---

@@ -1,3 +1,5 @@
+import fs from 'fs'
+
 let exitHandlersBound = false
 
 /**
@@ -12,5 +14,19 @@ export function bindExitHandler(cleanupFn: () => void): void {
     process.on('SIGTERM', () => process.exit())
     process.on('SIGHUP', () => process.exit())
     exitHandlersBound = true
+  }
+}
+
+export function removeOwnedFile(filePath: string, pid = process.pid): void {
+  let ownerPid: unknown
+
+  try {
+    ownerPid = JSON.parse(fs.readFileSync(filePath, 'utf8')).pid
+  } catch {
+    return
+  }
+
+  if (ownerPid === pid) {
+    fs.rmSync(filePath, { force: true })
   }
 }

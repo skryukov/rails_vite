@@ -22,6 +22,10 @@ function callConfigResolved(plugin: Plugin, overrides: Record<string, unknown> =
   })
 }
 
+function callConfigureServer(plugin: Plugin, server: unknown) {
+  return (plugin.configureServer as unknown as (server: unknown) => unknown)(server)
+}
+
 function callWriteBundle(plugin: Plugin, bundle: Record<string, unknown>) {
   ;(plugin.writeBundle as Function)({}, bundle)
 }
@@ -125,12 +129,12 @@ vi.mock('fs', async () => {
         }
         return actual.readdirSync(dir, options as Parameters<typeof actual.readdirSync>[1])
       },
-      readFileSync: (filePath: string, encoding?: string) => {
+      readFileSync: vi.fn((filePath: string, encoding?: string) => {
         if (typeof filePath === 'string' && filePath.includes('dev-server-index.html')) {
           return '<html><body>Vite Dev Server</body></html>'
         }
         return actual.readFileSync(filePath, encoding as BufferEncoding)
-      },
+      }),
       mkdirSync: vi.fn(),
       writeFileSync: vi.fn(),
       copyFileSync: vi.fn(),
@@ -144,6 +148,7 @@ describe('rails-vite-plugin/jsbundling', () => {
     delete process.env.CI
     delete process.env.RAILS_ENV
     vi.mocked(fs.mkdirSync).mockClear()
+    vi.mocked(fs.readFileSync).mockClear()
     vi.mocked(fs.writeFileSync).mockClear()
     vi.mocked(fs.copyFileSync).mockClear()
     vi.mocked(fs.rmSync).mockClear()
@@ -545,20 +550,36 @@ describe('rails-vite-plugin/jsbundling', () => {
 
   // --- Environment guards ---
 
-  it('throws in CI environment during serve', () => {
+  it('allows config resolution in CI environment during serve', () => {
     process.env.CI = 'true'
     const plugin = jsbundling({ input: 'application.js' })
 
-    expect(() => getConfig(plugin, {}, SERVE)).toThrowError(
+    expect(() => getConfig(plugin, {}, SERVE)).not.toThrow()
+  })
+
+  it('throws when configuring dev server in CI environment', () => {
+    process.env.CI = 'true'
+    const plugin = jsbundling({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+
+    expect(() => (plugin.configureServer as Function)({})).toThrowError(
       'should not run the Vite dev server in CI',
     )
   })
 
-  it('throws in production environment during serve', () => {
+  it('allows config resolution in production environment during serve', () => {
     process.env.RAILS_ENV = 'production'
     const plugin = jsbundling({ input: 'application.js' })
 
-    expect(() => getConfig(plugin, {}, SERVE)).toThrowError(
+    expect(() => getConfig(plugin, {}, SERVE)).not.toThrow()
+  })
+
+  it('throws when configuring dev server in production environment', () => {
+    process.env.RAILS_ENV = 'production'
+    const plugin = jsbundling({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+
+    expect(() => (plugin.configureServer as Function)({})).toThrowError(
       'should not run the Vite dev server in production',
     )
   })
@@ -609,7 +630,7 @@ describe('rails-vite-plugin/jsbundling', () => {
     vi.mocked(fs.writeFileSync).mockClear()
 
     const server = createMockServer()
-    ;(plugin.configureServer as Function)(server)
+    callConfigureServer(plugin, server)
 
     // writePlaceholderStubs creates the directory and writes JS + CSS stubs
     const mkdirCalls = vi.mocked(fs.mkdirSync).mock.calls
@@ -734,7 +755,7 @@ describe('rails-vite-plugin/jsbundling', () => {
     callConfigResolved(plugin)
 
     const server = createMockServer()
-    ;(plugin.configureServer as Function)(server)
+    callConfigureServer(plugin, server)
     server._emit('listening')
 
     vi.mocked(fs.writeFileSync).mockClear()
@@ -827,6 +848,42 @@ describe('rails-vite-plugin/jsbundling', () => {
       path.dirname('some/nested/dir/meta.json'),
       { recursive: true },
     ])
+  })
+
+  it('does not remove devMetaFile from cleanup when no HTTP server wrote it', () => {
+    const plugin = jsbundling({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+    callConfigResolved(plugin)
+
+    const server = { ...createMockServer(), httpServer: undefined }
+    ;(plugin.configureServer as Function)(server)
+
+    const exitHandler = vi.mocked(bindExitHandler).mock.calls[0][0]
+
+    vi.mocked(fs.rmSync).mockClear()
+    exitHandler()
+
+    expect(fs.rmSync).not.toHaveBeenCalledWith(path.join('tmp', 'rails-vite.json'), { force: true })
+  })
+
+  it('writes pid to devMetaFile and registers owned cleanup after listening', () => {
+    const plugin = jsbundling({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+    callConfigResolved(plugin)
+
+    const server = createMockServer()
+    ;(plugin.configureServer as Function)(server)
+    server._emit('listening')
+
+    const metaWrite = vi.mocked(fs.writeFileSync).mock.calls.find(([filePath]) => filePath === path.join('tmp', 'rails-vite.json'))
+    expect(metaWrite).toBeDefined()
+    expect(JSON.parse(String(metaWrite![1]))).toMatchObject({
+      url: 'http://localhost:5173',
+      sourceDir: 'app/javascript',
+      pid: process.pid,
+      jsbundling: true,
+    })
+    expect(bindExitHandler).toHaveBeenCalledTimes(2)
   })
 
   // --- writeDevStubs: CSS entries ---

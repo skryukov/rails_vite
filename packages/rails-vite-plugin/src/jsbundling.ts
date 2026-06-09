@@ -21,7 +21,7 @@ import { refreshPaths, resolveRefreshPaths } from './shared/refresh.js'
 import { cssExtensions } from './shared/css.js'
 import { readDevServerIndexHtml } from './shared/dev-server-page.js'
 import { resolveNoExternal } from './shared/ssr.js'
-import { bindExitHandler } from './shared/cleanup.js'
+import { bindExitHandler, removeOwnedFile } from './shared/cleanup.js'
 
 export type { InputOption }
 export { refreshPaths }
@@ -67,6 +67,7 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
   let resolvedConfig: ResolvedConfig
   let reactRefresh = false
   let devServerUrl: string | null = null
+  let devServerEnv: Record<string, string> = {}
 
   // Track stubs written in dev so we can clean them up
   const writtenStubs: string[] = []
@@ -76,9 +77,7 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
     enforce: 'post',
 
     config(userConfig: UserConfig, { command, mode, isSsrBuild }: ConfigEnv): UserConfig {
-      const env = loadEnv(mode, userConfig.envDir || process.cwd(), '')
-
-      ensureCommandShouldRunInEnvironment(command, env, 'rails-vite-plugin/jsbundling')
+      devServerEnv = loadEnv(mode, userConfig.envDir || process.cwd(), '')
 
       // @ts-expect-error -- `this.meta.rolldownVersion` exists in Vite 8+
       const bundlerOptionsKey = resolveBundlerOptionsKey(this.meta)
@@ -206,6 +205,8 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
     },
 
     configureServer(server) {
+      ensureCommandShouldRunInEnvironment('serve', devServerEnv, 'rails-vite-plugin/jsbundling')
+
       let syncTimer: ReturnType<typeof setTimeout> | null = null
 
       // Re-discover entries from the entrypoints dir and regenerate all stubs.
@@ -249,13 +250,17 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
 
           // Write dev meta file for progressive upgrade to the rails_vite gem
           if (devMetaPath) {
-            const meta: Record<string, unknown> = { url: devServerUrl, sourceDir }
+            const meta: Record<string, unknown> = { url: devServerUrl, sourceDir, pid: process.pid }
             if (epDir) meta.entrypointsDir = epDir
             if (ssrConfig) meta.ssrOutputDir = ssrConfig.outDir
             if (reactRefresh) meta.reactRefresh = true
             meta.jsbundling = true
             fs.mkdirSync(path.dirname(devMetaPath), { recursive: true })
             fs.writeFileSync(devMetaPath, JSON.stringify(meta))
+
+            bindExitHandler(() => {
+              removeOwnedFile(devMetaPath)
+            })
           }
 
           // Watch entrypoints dir for new/removed files and regenerate stubs
@@ -288,9 +293,6 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
           fs.rmSync(stub, { force: true })
         }
         writtenStubs.length = 0
-        if (devMetaPath) {
-          fs.rmSync(devMetaPath, { force: true })
-        }
       })
 
       // Watch view templates for full-page reload

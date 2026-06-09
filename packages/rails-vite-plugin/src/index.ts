@@ -20,7 +20,7 @@ import { ensureCommandShouldRunInEnvironment } from './shared/env-guard.js'
 import { refreshPaths, resolveRefreshPaths } from './shared/refresh.js'
 import { readDevServerIndexHtml } from './shared/dev-server-page.js'
 import { resolveNoExternal } from './shared/ssr.js'
-import { bindExitHandler } from './shared/cleanup.js'
+import { bindExitHandler, removeOwnedFile } from './shared/cleanup.js'
 
 export type { InputOption }
 export { refreshPaths }
@@ -54,15 +54,14 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
   let reactRefresh = false
   let devServerUrl: string | null = null
   let effectiveBuildDir: string
+  let devServerEnv: Record<string, string> = {}
 
   return {
     name: 'rails-vite',
     enforce: 'post',
 
     config(userConfig: UserConfig, { command, mode, isSsrBuild }: ConfigEnv): UserConfig {
-      const env = loadEnv(mode, userConfig.envDir || process.cwd(), '')
-
-      ensureCommandShouldRunInEnvironment(command, env, 'rails-vite-plugin')
+      devServerEnv = loadEnv(mode, userConfig.envDir || process.cwd(), '')
 
       // @ts-expect-error -- `this.meta.rolldownVersion` exists in Vite 8+
       const bundlerOptionsKey = resolveBundlerOptionsKey(this.meta)
@@ -119,17 +118,23 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
     },
 
     configureServer(server) {
+      ensureCommandShouldRunInEnvironment('serve', devServerEnv, 'rails-vite-plugin')
+
       server.httpServer?.once('listening', () => {
         const address = server.httpServer?.address()
 
         if (isAddressInfo(address)) {
           devServerUrl = resolveDevServerUrl(address, resolvedConfig)
 
-          const meta: Record<string, unknown> = { url: devServerUrl, sourceDir, buildDir: effectiveBuildDir }
+          const meta: Record<string, unknown> = { url: devServerUrl, sourceDir, buildDir: effectiveBuildDir, pid: process.pid }
           if (entrypointsDir) meta.entrypointsDir = entrypointsDir
           if (resolvedSsr) meta.ssrOutputDir = ssrOutDir
           if (reactRefresh) meta.reactRefresh = true
           fs.writeFileSync(devMetaPath, JSON.stringify(meta))
+
+          bindExitHandler(() => {
+            removeOwnedFile(devMetaPath)
+          })
 
           setTimeout(() => {
             server.config.logger.info(
@@ -137,10 +142,6 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
             )
           }, 100)
         }
-      })
-
-      bindExitHandler(() => {
-        fs.rmSync(devMetaPath, { force: true })
       })
 
       // Watch view templates for full-page reload
