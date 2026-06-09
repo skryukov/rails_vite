@@ -24,6 +24,24 @@ module RailsVite
       manifest.digest
     end
 
+    # A Content Security Policy source for the running Vite dev server, e.g.
+    #
+    #   policy.script_src(*policy.script_src, RailsVite.dev_server_csp_source)
+    #   policy.connect_src(*policy.connect_src, RailsVite.dev_server_csp_source(websocket: true))
+    #
+    # Returns a lambda so the URL is resolved per request: it tracks the dev
+    # server's real (possibly auto-incremented) port and contributes nothing
+    # when the server isn't running. Pass websocket: true for the HMR socket
+    # (http -> ws, https -> wss). RailsVite.config is referenced explicitly
+    # because Rails resolves CSP Proc sources via instance_exec, which rebinds
+    # self to the controller.
+    def dev_server_csp_source(websocket: false)
+      -> {
+        url = RailsVite.config.dev_server_url
+        url && (websocket ? url.sub(/\Ahttp/, "ws") : url)
+      }
+    end
+
     def reset!
       @config = nil
       @manifest = nil

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning].
 
 ### Added
 
+- `RailsVite.dev_server_csp_source` returns a Content Security Policy source for the running Vite dev server, resolved per request so it tracks the real (possibly auto-incremented) port and adds nothing when the server is down. Pass `websocket: true` for the HMR socket (#25) ([@skryukov])
 - `prependSourceDirToEntries` plugin option for `rails()` and `jsbundling()`. Set it to `false` to use Vite's `root` as your `sourceDir` — entries are then resolved by their bare, root-relative names instead of being prefixed with `sourceDir` (#22) ([@skryukov])
 
 ### Changed
@@ -17,6 +18,7 @@ and this project adheres to [Semantic Versioning].
 
 ### Fixed
 
+- The development `@vite/client` and React Fast Refresh tags now derive their nonce from the request (`content_security_policy_nonce`) instead of inheriting whatever nonce the first `vite_*` call passed. A nonce-less first call (e.g. a stylesheet) no longer ships a nonce-less client script under a `strict-dynamic` CSP (#25) ([@skryukov])
 - Persist auto-build freshness across process restarts so repeated local system-test runs no longer rebuild unchanged assets. Freshness now derives from the build manifest's timestamp instead of in-memory state (#21) ([@skryukov], [@brodienguyen])
 
 ## rails_vite@0.2.2 / rails-vite-plugin@0.2.4 - 2026-04-09

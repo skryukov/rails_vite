@@ -107,10 +107,25 @@ CSS files are detected by extension and emit `<link rel="stylesheet">`:
 <%= vite_tags "application.css" %>
 ```
 
-### CSP Nonces
+### Content Security Policy
+
+Pass a `nonce` to any tag helper; it's applied to every tag it emits:
 
 ```erb
 <%= vite_tags "application.js", nonce: content_security_policy_nonce %>
+```
+
+The dev server's `@vite/client` and React Fast Refresh tags pick up the request nonce automatically, so they work under `strict-dynamic` even when your first `vite_*` call is a nonce-less stylesheet.
+
+Running a CSP in development? Allow the dev server's origin with `RailsVite.dev_server_csp_source` — it resolves per request, so it tracks Vite's actual port and adds nothing when the server is down:
+
+```ruby
+# config/initializers/content_security_policy.rb — inside your `policy` block
+if Rails.env.development?
+  policy.script_src(*policy.script_src, RailsVite.dev_server_csp_source)
+  policy.style_src(*policy.style_src, RailsVite.dev_server_csp_source)
+  policy.connect_src(*policy.connect_src, RailsVite.dev_server_csp_source(websocket: true)) # HMR
+end
 ```
 
 ### Subresource Integrity (SRI)
