@@ -12,7 +12,7 @@ import {
 
 import type { InputOption, ResolvedEntry } from './shared/types.js'
 import { ORIGIN_PLACEHOLDER } from './shared/types.js'
-import { resolveEntries, entriesToRollupInput, prefixWithSourceDir, detectEntrypointsDir, discoverEntrypointInputs, detectEntrypoint, isEntrypointFile } from './shared/entries.js'
+import { resolveEntries, entriesToRollupInput, prefixWithSourceDir, detectEntrypointsDir, discoverEntrypointInputs, detectEntrypoint, isEntrypointFile, resolveManifestSourceDir } from './shared/entries.js'
 import { resolveAlias } from './shared/alias.js'
 import { resolveDevServerUrl, isAddressInfo, replaceOriginPlaceholder } from './shared/dev-server.js'
 import { resolveBundlerOptionsKey, getUserBundlerInput } from './shared/bundler-compat.js'
@@ -45,10 +45,13 @@ export interface JsbundlingOptions {
   /** Path to write dev server metadata JSON (default: 'tmp/rails-vite.json').
    *  Set to false to disable. Useful as a bridge for progressive upgrade to the rails_vite gem. */
   devMetaFile?: string | false
+  /** When false, dev-server URLs are built without the sourceDir prefix. Set this when Vite's `root` is your sourceDir. Default: true */
+  prependSourceDirToEntries?: boolean
 }
 
 export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
   const sourceDir = options.sourceDir ?? 'app/javascript'
+  const manifestSourceDir = resolveManifestSourceDir(sourceDir, options.prependSourceDirToEntries)
   const epDir = detectEntrypointsDir(sourceDir)
   const input = options.input ?? (epDir ? discoverEntrypointInputs(sourceDir, epDir) : detectEntrypoint(sourceDir))
   const assetPipelineDir = options.assetPipelineDir ?? 'app/assets/builds'
@@ -250,7 +253,7 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
 
           // Write dev meta file for progressive upgrade to the rails_vite gem
           if (devMetaPath) {
-            const meta: Record<string, unknown> = { url: devServerUrl, sourceDir, pid: process.pid }
+            const meta: Record<string, unknown> = { url: devServerUrl, sourceDir: manifestSourceDir, pid: process.pid }
             if (epDir) meta.entrypointsDir = epDir
             if (ssrConfig) meta.ssrOutputDir = ssrConfig.outDir
             if (reactRefresh) meta.reactRefresh = true

@@ -61,6 +61,16 @@ export function prefixWithSourceDir(entry: string, sourceDir: string): string {
   return `${sourceDir}/${entry}`
 }
 
+/**
+ * The sourceDir prefix the Rails helpers should prepend to manifest entries.
+ * Empty when `prependSourceDirToEntries` is false (Vite's `root` is the sourceDir,
+ * so entries are already root-relative). `=== false` keeps the default `true` when
+ * the option is omitted.
+ */
+export function resolveManifestSourceDir(sourceDir: string, prependSourceDirToEntries: boolean | undefined): string {
+  return prependSourceDirToEntries === false ? '' : sourceDir
+}
+
 export function detectEntrypointsDir(sourceDir: string): string | null {
   const entrypointsDir = path.join(sourceDir, 'entrypoints')
   return fs.existsSync(entrypointsDir) ? 'entrypoints' : null

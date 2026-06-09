@@ -12,7 +12,7 @@ import {
 
 import type { InputOption } from './shared/types.js'
 import { ORIGIN_PLACEHOLDER } from './shared/types.js'
-import { resolveInput, detectEntrypointsDir, discoverEntrypointInputs, detectEntrypoint } from './shared/entries.js'
+import { resolveInput, detectEntrypointsDir, discoverEntrypointInputs, detectEntrypoint, resolveManifestSourceDir } from './shared/entries.js'
 import { resolveAlias } from './shared/alias.js'
 import { resolveDevServerUrl, isAddressInfo, replaceOriginPlaceholder } from './shared/dev-server.js'
 import { resolveBundlerOptionsKey, getUserBundlerInput } from './shared/bundler-compat.js'
@@ -36,10 +36,13 @@ export interface RailsViteOptions {
   /** Public directory (default: 'public') */
   publicDir?: string
   refresh?: boolean | string | string[]
+  /** When false, manifest entries are looked up without the sourceDir prefix. Set this when Vite's `root` is your sourceDir. Default: true */
+  prependSourceDirToEntries?: boolean
 }
 
 export default function rails(options: RailsViteOptions = {}): Plugin {
   const sourceDir = options.sourceDir ?? 'app/javascript'
+  const manifestSourceDir = resolveManifestSourceDir(sourceDir, options.prependSourceDirToEntries)
   const entrypointsDir = options.input === undefined ? detectEntrypointsDir(sourceDir) : null
   const input = options.input ?? (entrypointsDir ? discoverEntrypointInputs(sourceDir, entrypointsDir) : detectEntrypoint(sourceDir))
   const publicDir = options.publicDir ?? 'public'
@@ -105,7 +108,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
       if (resolvedConfig.build.ssr) return
 
       const outDir = resolvedConfig.build.outDir
-      const meta: Record<string, unknown> = { sourceDir, buildDir: effectiveBuildDir }
+      const meta: Record<string, unknown> = { sourceDir: manifestSourceDir, buildDir: effectiveBuildDir }
       if (entrypointsDir) meta.entrypointsDir = entrypointsDir
       if (resolvedSsr) meta.ssrOutputDir = ssrOutDir
       fs.writeFileSync(path.join(outDir, 'rails-vite.json'), JSON.stringify(meta))
@@ -124,7 +127,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
         if (isAddressInfo(address)) {
           devServerUrl = resolveDevServerUrl(address, resolvedConfig)
 
-          const meta: Record<string, unknown> = { url: devServerUrl, sourceDir, buildDir: effectiveBuildDir, pid: process.pid }
+          const meta: Record<string, unknown> = { url: devServerUrl, sourceDir: manifestSourceDir, buildDir: effectiveBuildDir, pid: process.pid }
           if (entrypointsDir) meta.entrypointsDir = entrypointsDir
           if (resolvedSsr) meta.ssrOutputDir = ssrOutDir
           if (reactRefresh) meta.reactRefresh = true

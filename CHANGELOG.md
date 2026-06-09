@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 ## Unreleased
 
+### Added
+
+- `prependSourceDirToEntries` plugin option for `rails()` and `jsbundling()`. Set it to `false` to use Vite's `root` as your `sourceDir` — entries are then resolved by their bare, root-relative names instead of being prefixed with `sourceDir` (#22) ([@skryukov])
+
 ### Changed
 
 - Auto builds now run quietly (`vite build --logLevel warn`) to keep system-test output clean; warnings and errors are still shown ([@skryukov])

@@ -178,6 +178,7 @@ export default defineConfig({
 | `buildDir` | `'vite'` | Build output subdirectory inside `public/` |
 | `publicDir` | `'public'` | Public directory |
 | `refresh` | `true` | Paths to watch for full-page reload. `true` watches `app/views/**` and `app/helpers/**` |
+| `prependSourceDirToEntries` | `true` | When `false`, entries are resolved without the `sourceDir` prefix. Set this when Vite's `root` is your `sourceDir` (see below) |
 
 ### Multiple Entry Points
 
@@ -207,6 +208,26 @@ rails({
 ```erb
 <%= vite_tags "entrypoints/application.ts" %>
 ```
+
+### Setting Vite's `root` to your source directory
+
+By default, `root` is the Rails project root, so `import.meta.glob` keys and manifest entries are prefixed with `sourceDir` (e.g. `app/frontend/components/Foo.jsx`). If you prefer `vite_ruby`-style root-relative names (`components/Foo.jsx`), set Vite's `root` to your source directory and tell the plugin not to prepend `sourceDir`:
+
+```typescript
+import { fileURLToPath } from 'node:url'
+
+export default defineConfig({
+  root: fileURLToPath(new URL('./app/frontend', import.meta.url)),
+  plugins: [
+    rails({ sourceDir: 'app/frontend', prependSourceDirToEntries: false }),
+  ],
+  build: {
+    outDir: fileURLToPath(new URL('./public/vite', import.meta.url)),
+  },
+})
+```
+
+With `root` set to the source directory, Vite emits bare manifest keys, and `prependSourceDirToEntries: false` makes the Rails helpers look them up by those bare names. Set both together. (Don't point `root` at a symlinked path — Vite resolves symlinks and emits keys that escape the root.)
 
 ## Adding Frameworks
 

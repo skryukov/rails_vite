@@ -111,10 +111,13 @@ module RailsVite
     end
 
     def resolve_vite_entry(entry, source_dir, entrypoints_dir)
-      return entry if entry.start_with?("#{source_dir}/", "/")
+      return entry if entry.start_with?("/")
+      return entry if !source_dir.empty? && entry.start_with?("#{source_dir}/")
 
-      prefix = entrypoints_dir ? "#{source_dir}/#{entrypoints_dir}" : source_dir
-      "#{prefix}/#{entry}"
+      # source_dir is empty when the plugin's `root` is the source directory
+      # (prependSourceDirToEntries: false) — entries are then looked up by their
+      # bare, manifest-relative names.
+      [source_dir, entrypoints_dir, entry].reject { |part| part.nil? || part.empty? }.join("/")
     end
 
     def vite_asset_url(file)
