@@ -273,6 +273,8 @@ When the Vite dev server is not running, rails_vite automatically rebuilds asset
 
 Freshness is determined by comparing your source files' timestamps against the build manifest's timestamp. Since the manifest lives on disk, unchanged assets are not rebuilt across process restarts — for example, on repeated local system-test runs.
 
+Auto builds run quietly (`vite build --logLevel warn`), so they don't clutter your test output; warnings and errors are still shown. Run `rake vite:build` directly for the full build log.
+
 Disable it:
 
 ```ruby

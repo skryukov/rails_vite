@@ -32,6 +32,23 @@ class AutoBuildTest < Minitest::Test
     end
   end
 
+  def test_runs_the_build_quietly
+    captured = nil
+    with_root do
+      RailsVite::Tasks.stub(:build_command, "vite build") do
+        RailsVite::AutoBuild.define_method(:system) do |cmd|
+          captured = cmd
+          true
+        end
+        RailsVite::AutoBuild.new(@app, @config).call({})
+      ensure
+        RailsVite::AutoBuild.remove_method(:system)
+      end
+    end
+
+    assert_includes captured, "--logLevel warn"
+  end
+
   def test_builds_when_sources_are_newer_than_manifest
     write_manifest(mtime: Time.now - 10)
     FileUtils.touch(File.join(@source_dir, "app.js"), mtime: Time.now)
