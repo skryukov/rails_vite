@@ -50,7 +50,7 @@ module RailsVite
         # The client/react-refresh tags are emitted once, on the first vite_*
         # call. Their nonce must come from the request — not from whichever call
         # happened to be first — so a nonce-less first call (e.g. a stylesheet)
-        # doesn't ship a nonce-less @vite/client under a `strict-dynamic` CSP (#25).
+        # doesn't ship a nonce-less @vite/client under a `strict-dynamic` CSP.
         client_nonce = nonce || (content_security_policy_nonce if respond_to?(:content_security_policy_nonce))
 
         if RailsVite.config.react_refresh?

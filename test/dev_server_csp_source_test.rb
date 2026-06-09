@@ -19,10 +19,8 @@ class DevServerCspSourceTest < Minitest::Test
     File.write(File.join(@dir, "rails-vite.json"), JSON.generate("url" => url, "sourceDir" => "app/javascript"))
   end
 
-  # Unit: the lambda's own logic
-
   def test_returns_dev_server_url_when_running
-    write_meta("http://localhost:5199") # a walked (non-default) port
+    write_meta("http://localhost:5199")
 
     assert_equal "http://localhost:5199", RailsVite.dev_server_csp_source.call
   end
@@ -40,12 +38,9 @@ class DevServerCspSourceTest < Minitest::Test
   end
 
   def test_nil_when_server_down
-    # No meta file written -> dev_server_url is nil.
     assert_nil RailsVite.dev_server_csp_source.call
     assert_nil RailsVite.dev_server_csp_source(websocket: true).call
   end
-
-  # The real proof: per-request resolution inside an actual CSP build.
 
   def test_resolves_in_real_csp_build_and_survives_self_rebinding
     write_meta("http://localhost:5199")
@@ -55,10 +50,9 @@ class DevServerCspSourceTest < Minitest::Test
       p.connect_src(*p.connect_src, "'self'", RailsVite.dev_server_csp_source(websocket: true))
     end
 
-    # Rails resolves Proc sources via `context.instance_exec(&source)`, rebinding
-    # `self` to the controller. This context has its OWN `config` method — a naive
-    # `-> { config.dev_server_url }` would call this and raise. Proves the helper
-    # qualifies RailsVite.config.
+    # Rails resolves Proc sources via context.instance_exec(&source), rebinding
+    # self to the controller. trap_context.config raises, so a helper calling a
+    # bare `config` instead of RailsVite.config would fail here.
     trap_context = Object.new
     def trap_context.config
       raise "lambda resolved against the wrong self"
