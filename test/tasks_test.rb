@@ -78,4 +78,66 @@ class TasksTest < Minitest::Test
     assert_equal "pnpm vite", RailsVite::Tasks.dev_command
     assert_equal "pnpm vite build", RailsVite::Tasks.build_command
   end
+
+  def test_precompile_command_prefers_package_json_build_script
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {build: "vite build && vite build --ssr"})
+    assert_equal "npm run build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_run_forms_per_package_manager
+    write_package_json(scripts: {build: "vite build"})
+
+    {"yarn.lock" => "yarn run build",
+     "pnpm-lock.yaml" => "pnpm run build",
+     "bun.lock" => "bun run build"}.each do |lockfile, expected|
+      FileUtils.touch(lockfile)
+      assert_equal expected, RailsVite::Tasks.precompile_command
+      FileUtils.rm(lockfile)
+    end
+  end
+
+  def test_precompile_command_falls_back_without_build_script
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {dev: "vite"})
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_falls_back_without_package_json
+    FileUtils.touch("package-lock.json")
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_falls_back_on_empty_build_script
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {build: ""})
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_falls_back_on_malformed_package_json
+    FileUtils.touch("package-lock.json")
+    File.write("package.json", "{not json")
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_ignores_build_script_in_test_env
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {build: "vite build && vite build --ssr"})
+    Rails.stub(:env, ActiveSupport::StringInquirer.new("test")) do
+      assert_equal "npx vite build --mode test", RailsVite::Tasks.precompile_command
+    end
+  end
+
+  def test_build_command_appends_mode_test_in_test_env
+    FileUtils.touch("package-lock.json")
+    Rails.stub(:env, ActiveSupport::StringInquirer.new("test")) do
+      assert_equal "npx vite build --mode test", RailsVite::Tasks.build_command
+    end
+  end
+
+  private
+
+  def write_package_json(contents)
+    File.write("package.json", JSON.generate(contents))
+  end
 end

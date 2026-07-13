@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning].
 ### Added
 
 - `refreshDelay` plugin option for `rails()` and `jsbundling()`. It waits the given milliseconds after the last `refresh` change before the full-page reload, and sends one reload for a burst of changes. Use it when Rails sees template changes late, e.g. with `EventedFileUpdateChecker`. Default: `0`, which reloads at once as before (#45) ([@olivier-thatch])
+- The install generator sets `"type": "module"` in package.json — Vite and rails-vite-plugin are ESM-only, and without it Node fails to load `vite.config.ts` under npm/pnpm/yarn. When package.json pins another `type`, the generator emits `vite.config.mts` instead ([@skryukov])
+
+### Changed
+
+- `vite:build` (and therefore `assets:precompile`) runs the package.json `build` script when one exists, so `"build": "vite build && vite build --ssr"` produces both client and SSR bundles on deploy. Apps without a `build` script keep the bare `vite build`. Test builds and auto-builds always use the bare command, since their extra flags (`--mode test`, `--logLevel warn`) would only reach the last command of a compound script ([@skryukov])
 
 ### Fixed
 
