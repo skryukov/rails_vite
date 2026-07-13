@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## Unreleased
+
+### Added
+
+- The install generator sets `"type": "module"` in package.json — Vite and rails-vite-plugin are ESM-only, and without it Node fails to load `vite.config.ts` under npm/pnpm/yarn. When package.json pins another `type`, the generator emits `vite.config.mts` instead ([@skryukov])
+
+### Changed
+
+- `vite:build` (and therefore `assets:precompile`) runs the package.json `build` script when one exists, so `"build": "vite build && vite build --ssr"` produces both client and SSR bundles on deploy. Apps without a `build` script keep the bare `vite build`. Test builds and auto-builds always use the bare command, since their extra flags (`--mode test`, `--logLevel warn`) would only reach the last command of a compound script ([@skryukov])
+
 ## rails_vite@0.2.3 / rails-vite-plugin@0.2.5 - 2026-06-09
 
 ### Added

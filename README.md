@@ -316,6 +316,14 @@ npx vite build && npx vite build --ssr
 node ssr/ssr.js
 ```
 
+To build the SSR bundle during `assets:precompile`, define a `build` script — `vite:build` runs it when present:
+
+```json
+"scripts": {
+  "build": "vite build && vite build --ssr"
+}
+```
+
 ## Auto Build
 
 When the Vite dev server is not running, rails_vite automatically rebuilds assets on the first request if sources have changed. This is useful for system tests and quick checks without running `bin/dev`.
@@ -369,6 +377,8 @@ Defaults match the plugin defaults — no config needed if you follow convention
 | `rake vite:clobber` | Remove `public/vite/` |
 
 `vite:build` hooks into `assets:precompile` and `test:prepare` automatically. Skip with `SKIP_VITE_BUILD=1`.
+
+`vite:build` prefers your package.json `build` script when one exists (like jsbundling-rails), falling back to a bare `vite build`. Test builds always run `vite build --mode test` directly.
 
 
 ## jsbundling Mode
