@@ -2,13 +2,13 @@ namespace :vite do
   desc "Install JavaScript dependencies"
   task :install do
     command = RailsVite::Tasks.install_command
-    system(command) || raise("rails_vite: Command install failed, ensure #{command.split.first} is installed")
+    system(command, chdir: Rails.root) || raise("rails_vite: Command install failed, ensure #{command.split.first} is installed")
   end
 
   desc "Build Vite assets for production"
   task :build do
     command = RailsVite::Tasks.build_command
-    system(command) || raise("rails_vite: Command build failed, ensure `#{command}` runs without errors")
+    system(command, chdir: Rails.root) || raise("rails_vite: Command build failed, ensure `#{command}` runs without errors")
   end
 
   Rake::Task["vite:build"].prereqs << :install unless ENV["SKIP_VITE_INSTALL"]
