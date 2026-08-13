@@ -36,7 +36,7 @@ class AutoBuildTest < Minitest::Test
     captured = nil
     with_root do
       RailsVite::Tasks.stub(:build_command, "vite build") do
-        RailsVite::AutoBuild.define_method(:system) do |cmd|
+        RailsVite::AutoBuild.define_method(:system) do |cmd, **|
           captured = cmd
           true
         end
@@ -139,7 +139,7 @@ class AutoBuildTest < Minitest::Test
 
   def stub_build(callback)
     RailsVite::Tasks.stub(:build_command, "true") do
-      RailsVite::AutoBuild.define_method(:system) do |cmd|
+      RailsVite::AutoBuild.define_method(:system) do |cmd, **|
         callback.call
         true
       end
