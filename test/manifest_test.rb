@@ -43,6 +43,53 @@ class ManifestTest < Minitest::Test
     assert_includes result[:imports].map { |i| i[:file] }, "assets/vendor-b3c4d5e6.js"
   end
 
+  def test_lookup_collects_css_from_imported_chunks
+    manifest_data = {
+      "app/frontend/packs/feeds/show.ts" => {
+        "file" => "assets/show-abc123.js",
+        "isEntry" => true,
+        "css" => ["assets/show-def456.css"],
+        "imports" => ["_TemplateBase-xyz789.js"]
+      },
+      "_TemplateBase-xyz789.js" => {
+        "file" => "assets/TemplateBase-xyz789.js",
+        "css" => ["assets/TemplateBase-ghi000.css"]
+      }
+    }
+    File.write(@manifest_path, JSON.generate(manifest_data))
+    manifest = RailsVite::Manifest.new(@manifest_path)
+
+    result = manifest.lookup("app/frontend/packs/feeds/show.ts")
+    css_files = result[:css].map { |c| c[:file] }
+
+    assert_includes css_files, "assets/show-def456.css"
+    assert_includes css_files, "assets/TemplateBase-ghi000.css"
+  end
+
+  def test_lookup_dedupes_css_shared_across_imports
+    manifest_data = {
+      "entry.js" => {
+        "file" => "assets/entry.js",
+        "isEntry" => true,
+        "imports" => ["_a", "_b"]
+      },
+      "_a" => {
+        "file" => "assets/a.js",
+        "css" => ["assets/shared.css"]
+      },
+      "_b" => {
+        "file" => "assets/b.js",
+        "css" => ["assets/shared.css"]
+      }
+    }
+    File.write(@manifest_path, JSON.generate(manifest_data))
+    manifest = RailsVite::Manifest.new(@manifest_path)
+
+    result = manifest.lookup("entry.js")
+
+    assert_equal ["assets/shared.css"], result[:css].map { |c| c[:file] }
+  end
+
   def test_lookup_resolves_nested_imports
     result = @manifest.lookup("app/javascript/application.js")
     import_files = result[:imports].map { |i| i[:file] }
