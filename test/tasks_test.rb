@@ -37,6 +37,11 @@ class TasksTest < Minitest::Test
     assert_equal :npm, RailsVite::Tasks.tool
   end
 
+  def test_detects_aube_from_aube_lock
+    FileUtils.touch("aube-lock.yaml")
+    assert_equal :aube, RailsVite::Tasks.tool
+  end
+
   def test_bun_lockfile_takes_priority
     FileUtils.touch("bun.lockb")
     FileUtils.touch("yarn.lock")
@@ -77,5 +82,13 @@ class TasksTest < Minitest::Test
     assert_equal "pnpm add -D vite", RailsVite::Tasks.add_command("vite")
     assert_equal "pnpm vite", RailsVite::Tasks.dev_command
     assert_equal "pnpm vite build", RailsVite::Tasks.build_command
+  end
+
+  def test_aube_commands
+    FileUtils.touch("aube-lock.yaml")
+    assert_equal "aube install", RailsVite::Tasks.install_command
+    assert_equal "aube add -D vite", RailsVite::Tasks.add_command("vite")
+    assert_equal "aube exec vite", RailsVite::Tasks.dev_command
+    assert_equal "aube exec vite build", RailsVite::Tasks.build_command
   end
 end
