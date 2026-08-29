@@ -78,4 +78,15 @@ class TasksTest < Minitest::Test
     assert_equal "pnpm vite", RailsVite::Tasks.dev_command
     assert_equal "pnpm vite build", RailsVite::Tasks.build_command
   end
+
+  def test_custom_vite_executable
+    FileUtils.touch("package-lock.json")
+    config = RailsVite::Config.new
+    config.vite_executable = "vp"
+
+    RailsVite.stub(:config, config) do
+      assert_equal "npx vp", RailsVite::Tasks.dev_command
+      assert_equal "npx vp build", RailsVite::Tasks.build_command
+    end
+  end
 end
