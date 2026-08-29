@@ -194,6 +194,20 @@ export default defineConfig({
 });
 ```
 
+### Custom Vite Executable
+
+By default, Rails tasks invoke the `vite` executable supplied by the detected
+package manager. To use a compatible executable with a different name, such as
+Vite+'s `vp`, configure it in Rails:
+
+```ruby
+# config/initializers/rails_vite.rb
+Rails.application.config.rails_vite.vite_executable = "vp"
+```
+
+This applies to test builds, automatic builds, and `vite:build`. Start the
+development server directly from `Procfile.dev`, for example with `npx vp dev`.
+
 ### Plugin Options
 
 | Option | Default | Description |

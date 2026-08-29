@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## Unreleased
+
+### Added
+
+- `RailsVite::Config#vite_executable` for compatible Vite distributions and wrappers whose executable is not named `vite`.
+
 ## rails_vite@0.2.3 / rails-vite-plugin@0.2.5 - 2026-06-09
 
 ### Added

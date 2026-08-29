@@ -27,11 +27,11 @@ module RailsVite
     end
 
     def dev_command
-      command_for(:dev)
+      vite_command_for(:dev)
     end
 
     def build_command
-      cmd = command_for(:build)
+      cmd = vite_command_for(:build)
       cmd += " --mode test" if Rails.env.test?
       cmd
     end
@@ -41,6 +41,10 @@ module RailsVite
     end
 
     private
+
+    def vite_command_for(key)
+      command_for(key).sub(/\bvite\b/) { RailsVite.config.vite_executable }
+    end
 
     def command_for(key)
       COMMANDS.dig(tool, key) ||
