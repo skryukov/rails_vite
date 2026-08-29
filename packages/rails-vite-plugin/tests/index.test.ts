@@ -36,7 +36,7 @@ interface MockServer {
     add: ReturnType<typeof vi.fn>
     on: (event: string, cb: Callback) => void
   }
-  config: { logger: { info: ReturnType<typeof vi.fn> } }
+  config: { logger: { info: ReturnType<typeof vi.fn> }; plugins: Array<{ name: string }> }
   hot: { send: ReturnType<typeof vi.fn> }
   middlewares: { use: ReturnType<typeof vi.fn> }
   _emit: (event: string, ...args: unknown[]) => void
@@ -59,7 +59,7 @@ function createMockServer({ httpServer = true } = {}): MockServer {
       add: vi.fn(),
       on: vi.fn(),
     },
-    config: { logger: { info: vi.fn() } },
+    config: { logger: { info: vi.fn() }, plugins: [] },
     hot: { send: vi.fn() },
     middlewares: { use: vi.fn() },
     _emit(event: string, ...args: unknown[]) {
@@ -435,6 +435,16 @@ describe('rails-vite-plugin', () => {
     expect(() => (plugin.configureServer as Function)({})).toThrowError(
       'should not run the Vite dev server in CI',
     )
+  })
+
+  it('allows Vitest internal server startup in CI environment', () => {
+    process.env.CI = 'true'
+    const plugin = rails({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+    const server = createMockServer({ httpServer: false })
+    server.config.plugins.push({ name: 'vitest' })
+
+    expect(() => callConfigureServer(plugin, server)).not.toThrow()
   })
 
   it('allows config resolution in production environment during serve', () => {
