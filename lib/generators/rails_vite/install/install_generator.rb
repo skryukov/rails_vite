@@ -24,6 +24,8 @@ module RailsVite
           say %(Added "type": "module" to package.json (Vite and rails-vite-plugin are ESM-only).)
           warn_about_commonjs_configs
         end
+      rescue JSON::ParserError
+        say %(Could not parse package.json. Add "type": "module" to it manually (Vite and rails-vite-plugin are ESM-only).), :red
       end
 
       def create_vite_config

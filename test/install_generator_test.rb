@@ -50,6 +50,15 @@ class InstallGeneratorEsmTest < Minitest::Test
     assert_match(/ESM-only/, out)
   end
 
+  def test_warns_on_malformed_package_json
+    File.write("package.json", "{not json")
+
+    out, _err = capture_io { @generator.ensure_esm_package }
+
+    assert_equal "{not json", File.read("package.json")
+    assert_match(/Could not parse package\.json/, out)
+  end
+
   def test_skips_when_package_json_is_missing
     capture_io { @generator.ensure_esm_package }
 
