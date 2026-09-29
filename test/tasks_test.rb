@@ -5,9 +5,12 @@ class TasksTest < Minitest::Test
     @original_dir = Dir.pwd
     @dir = Dir.mktmpdir
     Dir.chdir(@dir)
+    @original_root = Rails.application.config.root
+    Rails.application.config.root = @dir
   end
 
   def teardown
+    Rails.application.config.root = @original_root
     Dir.chdir(@original_dir)
     FileUtils.rm_rf(@dir)
   end
@@ -94,6 +97,16 @@ class TasksTest < Minitest::Test
       FileUtils.touch(lockfile)
       assert_equal expected, RailsVite::Tasks.precompile_command
       FileUtils.rm(lockfile)
+    end
+  end
+
+  def test_precompile_command_reads_package_json_from_rails_root
+    write_package_json(scripts: {build: "vite build"})
+    Dir.mktmpdir do |cwd|
+      Dir.chdir(cwd) do
+        FileUtils.touch("package-lock.json")
+        assert_equal "npm run build", RailsVite::Tasks.precompile_command
+      end
     end
   end
 
