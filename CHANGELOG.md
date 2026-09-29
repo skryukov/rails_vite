@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning].
 
 ### Changed
 
-- `vite:build` (and therefore `assets:precompile`) runs the package.json `build` script when one exists, so `"build": "vite build && vite build --ssr"` produces both client and SSR bundles on deploy. Apps without a `build` script keep the bare `vite build`. Test builds and auto-builds always use the bare command, since their extra flags (`--mode test`, `--logLevel warn`) would only reach the last command of a compound script ([@skryukov])
+- `vite:build` (and therefore `assets:precompile`) runs the package.json `build` script when one exists, so `"build": "vite build && vite build --ssr"` produces both client and SSR bundles on deploy. Apps without a `build` script keep the bare `vite build`. If package.json already has a `build` script (e.g. one left over from jsbundling-rails), make sure it builds with Vite before upgrading. Test builds and auto-builds always use the bare command, since their extra flags (`--mode test`, `--logLevel warn`) would only reach the last command of a compound script ([@skryukov])
 
 ### Fixed
 
