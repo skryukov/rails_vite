@@ -36,11 +36,6 @@ module RailsVite
       cmd
     end
 
-    # The vite:build task prefers the app's package.json `build` script, so
-    # `"build": "vite build && vite build --ssr"` makes assets:precompile
-    # produce both bundles. Test builds and auto-builds keep the bare vite
-    # command: they append flags (`--mode test`, `--logLevel warn`) that
-    # would only reach the last command of a compound script.
     def precompile_command
       return build_command if Rails.env.test? || !package_json_build_script?
       "#{command_for(:run)} build"

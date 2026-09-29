@@ -10,9 +10,6 @@ module RailsVite
         run RailsVite::Tasks.add_command("vite", "rails-vite-plugin")
       end
 
-      # Vite and rails-vite-plugin are ESM-only: without `"type": "module"`,
-      # Node loads vite.config.ts via require and dies. Package managers
-      # create package.json on install but never set the field.
       def ensure_esm_package
         return unless File.exist?("package.json")
 
