@@ -20,7 +20,7 @@ module RailsVite
           say %(package.json sets "type": "#{package_json["type"]}", but Vite and rails-vite-plugin are ESM-only — generating vite.config.mts instead.), :yellow
         else
           package_json["type"] = "module"
-          File.write("package.json", JSON.pretty_generate(package_json) + "\n")
+          create_file "package.json", JSON.pretty_generate(package_json) + "\n", force: true
           say %(Added "type": "module" to package.json (Vite and rails-vite-plugin are ESM-only).)
           warn_about_commonjs_configs
         end

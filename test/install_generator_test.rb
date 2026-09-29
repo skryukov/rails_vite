@@ -24,6 +24,15 @@ class InstallGeneratorEsmTest < Minitest::Test
     assert_equal({"vite" => "^8.0.0"}, parsed["devDependencies"])
   end
 
+  def test_does_not_write_package_json_when_pretending
+    File.write("package.json", "{}")
+    generator = RailsVite::Generators::InstallGenerator.new([], {pretend: true})
+
+    capture_io { generator.ensure_esm_package }
+
+    assert_equal "{}", File.read("package.json")
+  end
+
   def test_keeps_package_json_untouched_when_already_esm
     File.write("package.json", %({"type":"module"}))
 
