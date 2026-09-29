@@ -127,6 +127,18 @@ class TasksTest < Minitest::Test
     assert_equal "npx vite build", RailsVite::Tasks.precompile_command
   end
 
+  def test_precompile_command_falls_back_on_blank_build_script
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {build: "   "})
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_falls_back_when_scripts_is_not_an_object
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: "vite build")
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
   def test_precompile_command_falls_back_on_malformed_package_json
     FileUtils.touch("package-lock.json")
     File.write("package.json", "{not json")

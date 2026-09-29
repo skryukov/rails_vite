@@ -50,8 +50,8 @@ module RailsVite
     def package_json_build_script?
       path = Rails.root.join("package.json")
       return false unless path.exist?
-      !JSON.parse(path.read).dig("scripts", "build").to_s.empty?
-    rescue JSON::ParserError
+      !JSON.parse(path.read).dig("scripts", "build").to_s.strip.empty?
+    rescue JSON::ParserError, TypeError
       false
     end
 
