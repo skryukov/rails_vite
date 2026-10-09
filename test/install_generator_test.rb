@@ -33,6 +33,31 @@ class InstallGeneratorEsmTest < Minitest::Test
     assert_equal "{}", File.read("package.json")
   end
 
+  def test_pretend_reports_the_same_vite_config_as_a_real_run
+    File.write("package.json", "{}")
+    generator = RailsVite::Generators::InstallGenerator.new([], {pretend: true})
+
+    out, _err = capture_io do
+      generator.ensure_esm_package
+      generator.create_vite_config
+    end
+
+    assert_match(/create\s+vite\.config\.ts$/, out)
+    refute File.exist?("vite.config.ts")
+  end
+
+  def test_generates_vite_config_mts_for_commonjs_package
+    File.write("package.json", %({"type":"commonjs"}))
+
+    capture_io do
+      @generator.ensure_esm_package
+      @generator.create_vite_config
+    end
+
+    assert File.exist?("vite.config.mts")
+    refute File.exist?("vite.config.ts")
+  end
+
   def test_keeps_package_json_untouched_when_already_esm
     File.write("package.json", %({"type":"module"}))
 

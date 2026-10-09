@@ -14,13 +14,15 @@ module RailsVite
         return unless File.exist?("package.json")
 
         package_json = JSON.parse(File.read("package.json"))
-        return if package_json["type"] == "module"
+        @esm_package = package_json["type"] == "module"
+        return if @esm_package
 
         if package_json.key?("type")
           say %(package.json sets "type": "#{package_json["type"]}", but Vite and rails-vite-plugin are ESM-only — generating vite.config.mts instead.), :yellow
         else
           package_json["type"] = "module"
           create_file "package.json", JSON.pretty_generate(package_json) + "\n", force: true
+          @esm_package = true
           say %(Added "type": "module" to package.json (Vite and rails-vite-plugin are ESM-only).)
           warn_about_commonjs_configs
         end
@@ -29,7 +31,7 @@ module RailsVite
       end
 
       def create_vite_config
-        template "vite.config.ts.tt", esm_package? ? "vite.config.ts" : "vite.config.mts"
+        template "vite.config.ts.tt", @esm_package ? "vite.config.ts" : "vite.config.mts"
       end
 
       def create_entrypoint
@@ -82,12 +84,6 @@ module RailsVite
       end
 
       private
-
-      def esm_package?
-        File.exist?("package.json") && JSON.parse(File.read("package.json"))["type"] == "module"
-      rescue JSON::ParserError
-        false
-      end
 
       def warn_about_commonjs_configs
         commonjs_configs = Dir["*.config.js"].select { |f| File.read(f).match?(/\bmodule\.exports\b|\brequire\(/) }
