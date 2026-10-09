@@ -113,11 +113,11 @@ class TasksTest < Minitest::Test
     end
   end
 
-  def test_precompile_command_reads_package_json_from_rails_root
+  def test_precompile_command_reads_rails_root_from_another_dir
     write_package_json(scripts: {build: "vite build"})
+    FileUtils.touch("package-lock.json")
     Dir.mktmpdir do |cwd|
       Dir.chdir(cwd) do
-        FileUtils.touch("package-lock.json")
         assert_equal "npm run build", RailsVite::Tasks.precompile_command
       end
     end

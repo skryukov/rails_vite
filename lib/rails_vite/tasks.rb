@@ -79,7 +79,7 @@ module RailsVite
 
     def tool_determined_by_lockfile
       LOCKFILES.each do |tool_name, files|
-        return tool_name if files.any? { |f| File.exist?(f) }
+        return tool_name if files.any? { |f| Rails.root.join(f).exist? }
       end
       nil
     end
