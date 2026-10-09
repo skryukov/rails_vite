@@ -220,7 +220,7 @@ js: npx vp dev
 | `ssr` | — | SSR entry point |
 | `ssrOutDir` | `'ssr'` | SSR output directory |
 | `devMetaFile` | `'tmp/rails-vite.json'` | Dev metadata file path |
-| `buildDir` | `'vite'` | Build output subdirectory inside `public/` |
+| `buildDir` | `$RAILS_VITE_BUILD_DIR`, else `'vite-test'` in `test` mode, else `'vite'` | Build output subdirectory inside `public/`. The gem sets `RAILS_VITE_BUILD_DIR` from `config.rails_vite.build_dir` when it runs a build |
 | `publicDir` | `'public'` | Public directory |
 | `refresh` | `true` | Paths to watch for full-page reload. `true` watches `app/views/**` and `app/helpers/**` |
 | `refreshDelay` | `0` | Milliseconds to wait after the last `refresh` change before the full-page reload. Changes within the delay send one reload. Set it (e.g. `300`) when Rails sees template changes late, as with `config.file_watcher = ActiveSupport::EventedFileUpdateChecker`, so the reload does not get the old HTML |
@@ -375,6 +375,25 @@ By default, auto build is enabled in development and test (`Rails.env.local?`).
 
 Note: for parallel test runners, disable auto build and use `rake vite:build` before the suite instead.
 
+## Build Mode
+
+`rake vite:build` and auto builds pass `--mode test` to `vite build` in the test environment, and no `--mode` elsewhere. This sets `import.meta.env.MODE` and chooses which `.env.[mode]` files Vite loads. If `MODE === 'test'` means "running under Vitest" in your app, a Rails system-test bundle then includes Vitest-only code. Choose another mode, or no mode:
+
+```ruby
+# config/initializers/rails_vite.rb
+if Rails.env.test?
+  Rails.application.config.rails_vite.build_mode = nil     # no --mode, so Vite uses "production"
+  # or
+  Rails.application.config.rails_vite.build_mode = "e2e"   # --mode e2e
+end
+```
+
+The build mode does not change the build directory: the test environment still builds to `public/vite-test/`. The gem passes its `build_dir` to the plugin in the `RAILS_VITE_BUILD_DIR` environment variable, so the gem and the plugin always use the same directory. If you run `vite build` yourself, set `RAILS_VITE_BUILD_DIR` or the plugin's `buildDir` option to match.
+
+Upgrade `rails-vite-plugin` together with the gem: older plugin versions ignore `RAILS_VITE_BUILD_DIR` and build every mode other than `test` into `public/vite/`.
+
+With `build_mode` set, `vite:build` runs `vite build --mode` directly instead of your package.json `build` script, because `--mode` would only reach the last command of a compound script. Build other bundles, such as SSR, in a separate step.
+
 ## Testing the Build
 
 To verify your production build works in development:
@@ -410,7 +429,7 @@ Defaults match the plugin defaults — no config needed if you follow convention
 
 `vite:build` hooks into `assets:precompile` and `test:prepare` automatically. Skip with `SKIP_VITE_BUILD=1`.
 
-`vite:build` prefers your package.json `build` script when one exists (like jsbundling-rails), falling back to a bare `vite build`. Test builds always run `vite build --mode test` directly.
+`vite:build` prefers your package.json `build` script when one exists (like jsbundling-rails), falling back to a bare `vite build`. Test builds, and builds with `build_mode` set, skip the script and run `vite build` directly.
 
 ### Package Manager
 

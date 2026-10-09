@@ -33,7 +33,7 @@ export interface RailsViteOptions {
   ssr?: InputOption
   ssrOutDir?: string
   devMetaFile?: string
-  /** Directory name under publicDir for Vite build output (default: 'vite') */
+  /** Directory name under publicDir for Vite build output (default: $RAILS_VITE_BUILD_DIR, else 'vite-test' in test mode, else 'vite') */
   buildDir?: string
   /** Public directory (default: 'public') */
   publicDir?: string
@@ -77,7 +77,8 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
       const bundlerOptionsKey = resolveBundlerOptionsKey(this.meta)
       const userBundlerInput = getUserBundlerInput(userConfig)
 
-      effectiveBuildDir = userBuildDir ?? (mode === 'test' ? 'vite-test' : 'vite')
+      // The rails_vite gem sets RAILS_VITE_BUILD_DIR on its builds, so the gem and the plugin use the same dir in all modes.
+      effectiveBuildDir = userBuildDir ?? (process.env.RAILS_VITE_BUILD_DIR || (mode === 'test' ? 'vite-test' : 'vite'))
 
       return {
         base: userConfig.base ?? (command === 'build' ? `/${effectiveBuildDir}/` : ''),

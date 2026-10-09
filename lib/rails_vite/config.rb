@@ -2,7 +2,7 @@ module RailsVite
   class Config
     META_FILENAME = "rails-vite.json"
 
-    attr_writer :dev_meta_path, :manifest_path, :asset_prefix, :auto_build, :build_dir, :vite_executable, :auto_build_paths
+    attr_writer :dev_meta_path, :manifest_path, :asset_prefix, :auto_build, :build_dir, :vite_executable, :auto_build_paths, :build_mode
 
     def dev_meta_path
       @dev_meta_path || Rails.root.join("tmp", META_FILENAME)
@@ -10,6 +10,12 @@ module RailsVite
 
     def build_dir
       @build_dir || (Rails.env.test? ? "vite-test" : "vite")
+    end
+
+    # The `--mode` for `vite build`. nil or false passes no `--mode`, so Vite uses its default.
+    def build_mode
+      return @build_mode.presence if defined?(@build_mode)
+      "test" if Rails.env.test?
     end
 
     def vite_executable

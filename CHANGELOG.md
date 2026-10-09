@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning].
 - [aube](https://github.com/aubepkg/aube) package manager support: an `aube-lock.yaml` makes the rake tasks, auto build and the install generator use aube, even next to another lockfile left over from `aube import` (#41) ([@beauraF])
 - `config.rails_vite.vite_executable` sets the executable for `rake vite:build`, test builds and auto builds, so Vite-compatible CLIs with another name, such as Vite+'s `vp`, work. The default is `vite` (#42) ([@cole-robertson])
 - `auto_build_paths` config option: extra paths and globs, relative to `Rails.root`, that auto build checks for changes besides `sourceDir` (for example `app/views` for Tailwind). It defaults to the root-level Vite, PostCSS, Tailwind and TypeScript configs, `package.json`, and the lockfile, so changes to them now trigger a rebuild (#46) ([@olivier-thatch])
+- `config.rails_vite.build_mode` sets the `--mode` for `vite build` in `rake vite:build` and auto builds. The default is unchanged (`"test"` in the test environment, no `--mode` elsewhere); set it to `nil` to pass no `--mode`. The gem now passes its `build_dir` to the plugin in `RAILS_VITE_BUILD_DIR`, so the build directory no longer depends on the mode. Upgrade `rails-vite-plugin` together with the gem: older plugin versions ignore `RAILS_VITE_BUILD_DIR`. With `build_mode` set, `vite:build` runs `vite build --mode` directly instead of the package.json `build` script (#49) ([@olivier-thatch])
 
 ### Changed
 

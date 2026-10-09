@@ -33,7 +33,7 @@ class RakeTasksTest < Minitest::Test
       end
     end
 
-    assert_equal ["npx vp build"], calls.last
+    assert_equal [{"RAILS_VITE_BUILD_DIR" => "vite"}, "npx vp build"], calls.last
   ensure
     main.singleton_class.remove_method(:system)
   end

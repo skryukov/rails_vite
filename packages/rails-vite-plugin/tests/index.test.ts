@@ -111,6 +111,7 @@ describe('rails-vite-plugin', () => {
   afterEach(() => {
     delete process.env.CI
     delete process.env.RAILS_ENV
+    delete process.env.RAILS_VITE_BUILD_DIR
     vi.mocked(fs.readFileSync).mockClear()
     vi.mocked(fs.writeFileSync).mockClear()
     vi.mocked(fs.rmSync).mockClear()
@@ -238,6 +239,31 @@ describe('rails-vite-plugin', () => {
 
     const config = getConfig(plugin)
     expect(config!.base).toBe('/assets/')
+    expect(config!.build!.outDir).toBe(path.join('public', 'assets'))
+  })
+
+  it('uses vite-test buildDir in test mode', () => {
+    const plugin = rails({ input: 'application.js' })
+
+    const config = getConfig(plugin, {}, { command: 'build', mode: 'test' })
+    expect(config!.base).toBe('/vite-test/')
+    expect(config!.build!.outDir).toBe(path.join('public', 'vite-test'))
+  })
+
+  it('uses RAILS_VITE_BUILD_DIR as buildDir whatever the mode is', () => {
+    process.env.RAILS_VITE_BUILD_DIR = 'vite-test'
+    const plugin = rails({ input: 'application.js' })
+
+    const config = getConfig(plugin, {}, { command: 'build', mode: 'production' })
+    expect(config!.base).toBe('/vite-test/')
+    expect(config!.build!.outDir).toBe(path.join('public', 'vite-test'))
+  })
+
+  it('prefers the buildDir option over RAILS_VITE_BUILD_DIR', () => {
+    process.env.RAILS_VITE_BUILD_DIR = 'vite-test'
+    const plugin = rails({ input: 'application.js', buildDir: 'assets' })
+
+    const config = getConfig(plugin)
     expect(config!.build!.outDir).toBe(path.join('public', 'assets'))
   })
 

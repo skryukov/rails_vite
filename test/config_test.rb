@@ -17,6 +17,42 @@ class ConfigTest < Minitest::Test
     assert_equal "/vite", @config.asset_prefix
   end
 
+  def test_default_build_mode_is_nil_outside_test
+    refute Rails.env.test?
+    assert_nil @config.build_mode
+  end
+
+  def test_default_build_mode_is_test_in_test
+    with_env("test") do
+      assert_equal "test", @config.build_mode
+      assert_equal "vite-test", @config.build_dir
+    end
+  end
+
+  def test_custom_build_mode
+    @config.build_mode = "e2e"
+    assert_equal "e2e", @config.build_mode
+  end
+
+  def test_build_mode_nil_or_false_means_no_mode
+    with_env("test") do
+      @config.build_mode = nil
+      assert_nil @config.build_mode
+
+      @config.build_mode = false
+      assert_nil @config.build_mode
+    end
+  end
+
+  def test_build_dir_and_manifest_path_do_not_depend_on_build_mode
+    with_env("test") do
+      @config.build_mode = nil
+      assert_equal "vite-test", @config.build_dir
+      assert_equal Rails.root.join("public/vite-test/manifest.json"), @config.manifest_path
+      assert_equal "/vite-test", @config.asset_prefix
+    end
+  end
+
   def test_default_vite_executable
     assert_equal "vite", @config.vite_executable
   end
@@ -203,6 +239,10 @@ class ConfigTest < Minitest::Test
   end
 
   private
+
+  def with_env(env, &block)
+    Rails.stub(:env, ActiveSupport::EnvironmentInquirer.new(env), &block)
+  end
 
   def with_dev_meta(**extra)
     Dir.mktmpdir do |dir|

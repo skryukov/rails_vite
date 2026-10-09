@@ -178,6 +178,22 @@ class TasksTest < Minitest::Test
     end
   end
 
+  def test_precompile_command_skips_build_script_with_build_mode
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {build: "vite build && vite build --ssr"})
+    with_config(build_mode: "e2e") do
+      assert_equal "npx vite build --mode e2e", RailsVite::Tasks.precompile_command
+    end
+  end
+
+  def test_precompile_command_runs_build_script_without_build_mode
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {build: "vite build && vite build --ssr"})
+    with_config(build_mode: nil) do
+      assert_equal "npm run build", RailsVite::Tasks.precompile_command
+    end
+  end
+
   def test_build_command_appends_mode_test_in_test_env
     FileUtils.touch("package-lock.json")
     Rails.stub(:env, ActiveSupport::StringInquirer.new("test")) do
@@ -227,9 +243,54 @@ class TasksTest < Minitest::Test
     end
   end
 
+  def test_build_command_uses_custom_build_mode
+    FileUtils.touch("yarn.lock")
+    with_config(build_mode: "e2e") do
+      assert_equal "yarn vite build --mode e2e", RailsVite::Tasks.build_command
+    end
+  end
+
+  def test_build_command_has_no_mode_when_build_mode_is_nil
+    FileUtils.touch("yarn.lock")
+    with_env("test") do
+      with_config(build_mode: nil) do
+        assert_equal "yarn vite build", RailsVite::Tasks.build_command
+      end
+    end
+  end
+
+  def test_build_env_sets_build_dir
+    assert_equal({"RAILS_VITE_BUILD_DIR" => "vite"}, RailsVite::Tasks.build_env)
+  end
+
+  def test_build_env_keeps_test_build_dir_without_mode_test
+    with_env("test") do
+      with_config(build_mode: nil) do
+        assert_equal({"RAILS_VITE_BUILD_DIR" => "vite-test"}, RailsVite::Tasks.build_env)
+        assert_equal Rails.root.join("public/vite-test/manifest.json"), RailsVite.config.manifest_path
+      end
+    end
+  end
+
+  def test_build_env_uses_custom_build_dir
+    with_config(build_dir: "assets") do
+      assert_equal({"RAILS_VITE_BUILD_DIR" => "assets"}, RailsVite::Tasks.build_env)
+    end
+  end
+
   private
 
   def write_package_json(contents)
     File.write("package.json", JSON.generate(contents))
+  end
+
+  def with_env(env, &block)
+    Rails.stub(:env, ActiveSupport::EnvironmentInquirer.new(env), &block)
+  end
+
+  def with_config(**options, &block)
+    config = RailsVite::Config.new
+    options.each { |key, value| config.public_send(:"#{key}=", value) }
+    RailsVite.stub(:config, config, &block)
   end
 end

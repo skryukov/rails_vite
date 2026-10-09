@@ -37,8 +37,8 @@ class AutoBuildTest < Minitest::Test
     captured = nil
     with_root do
       RailsVite::Tasks.stub(:build_command, "vite build") do
-        RailsVite::AutoBuild.define_method(:system) do |cmd, **|
-          captured = cmd
+        RailsVite::AutoBuild.define_method(:system) do |*args, **|
+          captured = args
           true
         end
         RailsVite::AutoBuild.new(@app, @config).call({})
@@ -47,7 +47,24 @@ class AutoBuildTest < Minitest::Test
       end
     end
 
-    assert_includes captured, "--logLevel warn"
+    assert_includes captured.last, "--logLevel warn"
+  end
+
+  def test_passes_the_build_dir_to_the_build
+    captured = nil
+    with_root do
+      RailsVite::Tasks.stub(:build_command, "vite build") do
+        RailsVite::AutoBuild.define_method(:system) do |*args, **|
+          captured = args
+          true
+        end
+        RailsVite::AutoBuild.new(@app, @config).call({})
+      ensure
+        RailsVite::AutoBuild.remove_method(:system)
+      end
+    end
+
+    assert_equal({"RAILS_VITE_BUILD_DIR" => RailsVite.config.build_dir}, captured.first)
   end
 
   def test_builds_when_sources_are_newer_than_manifest
@@ -219,7 +236,7 @@ class AutoBuildTest < Minitest::Test
 
   def stub_build(callback)
     RailsVite::Tasks.stub(:build_command, "true") do
-      RailsVite::AutoBuild.define_method(:system) do |cmd, **|
+      RailsVite::AutoBuild.define_method(:system) do |*, **|
         callback.call
         true
       end

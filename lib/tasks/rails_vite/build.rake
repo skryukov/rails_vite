@@ -8,7 +8,7 @@ namespace :vite do
   desc "Build Vite assets for production"
   task build: :environment do
     command = RailsVite::Tasks.precompile_command
-    system(command, chdir: Rails.root) || raise("rails_vite: Command build failed, ensure `#{command}` runs without errors")
+    system(RailsVite::Tasks.build_env, command, chdir: Rails.root) || raise("rails_vite: Command build failed, ensure `#{command}` runs without errors")
   end
 
   Rake::Task["vite:build"].prereqs << :install unless ENV["SKIP_VITE_INSTALL"]
