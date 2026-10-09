@@ -1,7 +1,7 @@
 import type { ViteDevServer } from 'vite'
 
 export function isVitestServer(server: ViteDevServer): boolean {
-  return server.config?.plugins?.some((plugin) => plugin.name === 'vitest') ?? false
+  return server.config?.plugins?.some((plugin) => plugin.name === 'vitest' || plugin.name?.startsWith('vitest:')) ?? false
 }
 
 export function ensureCommandShouldRunInEnvironment(

@@ -577,6 +577,16 @@ describe('rails-vite-plugin/jsbundling', () => {
     expect(() => callConfigureServer(plugin, server)).not.toThrow()
   })
 
+  it('allows Vitest 5 internal server startup in CI environment', () => {
+    process.env.CI = 'true'
+    const plugin = jsbundling({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+    const server = { ...createMockServer(), httpServer: undefined }
+    server.config.plugins.push({ name: 'vitest:project' })
+
+    expect(() => callConfigureServer(plugin, server)).not.toThrow()
+  })
+
   it('allows config resolution in production environment during serve', () => {
     process.env.RAILS_ENV = 'production'
     const plugin = jsbundling({ input: 'application.js' })
