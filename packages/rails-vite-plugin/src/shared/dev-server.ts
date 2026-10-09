@@ -41,3 +41,9 @@ export function replaceOriginPlaceholder(code: string, devServerUrl: string | nu
     return code.replaceAll(ORIGIN_PLACEHOLDER, devServerUrl)
   }
 }
+
+export function resolveAssetHost(host: string | undefined): string {
+  const trimmed = host?.replace(/\/+$/, '')
+  if (!trimmed) return ''
+  return /^([a-z][a-z\d+.-]*:)?\/\//i.test(trimmed) ? trimmed : `//${trimmed}`
+}
