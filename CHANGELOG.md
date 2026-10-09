@@ -19,17 +19,20 @@ and this project adheres to [Semantic Versioning].
 
 ### Changed
 
+- **Breaking:** `rails-vite-plugin` requires Vite 7 or newer and Node.js 20.19+ or 22.12+, like Vite 7 itself. It failed to load on Vite 5 and 6 already ([@skryukov])
 - Vite asset URLs are built with Rails' `path_to_asset`, so `asset_host` works as it does for other Rails assets: procs that take the request, `%d` hosts and per-controller hosts. Mailers now use `config.action_mailer.asset_host` (or `config.asset_host`) instead of the controller's. With `relative_url_root`, tags now include the prefix; set Vite's `base` to match (#36) ([@skryukov])
 - `rake vite:build` loads the Rails environment first, so `config.rails_vite` settings from initializers (such as `vite_executable`) also apply to it and to `bin/rails test` (#42) ([@cole-robertson])
 - The install generator writes `vite dev` instead of `vite` to `Procfile.dev` (#42) ([@cole-robertson])
-- `vite:build` (and therefore `assets:precompile`) runs the package.json `build` script when one exists, so `"build": "vite build && vite build --ssr"` produces both client and SSR bundles on deploy. Apps without a `build` script keep the bare `vite build`. If package.json already has a `build` script (e.g. one left over from jsbundling-rails), make sure it builds with Vite before upgrading. Test builds and auto-builds always use the bare command, since their extra flags (`--mode test`, `--logLevel warn`) would only reach the last command of a compound script (#38) ([@skryukov])
+- **Breaking:** `vite:build` (and therefore `assets:precompile`) runs the package.json `build` script when one exists, so `"build": "vite build && vite build --ssr"` produces both client and SSR bundles on deploy. Apps without a `build` script keep the bare `vite build`. If package.json already has a `build` script (e.g. one left over from jsbundling-rails), make sure it builds with Vite before upgrading. Test builds and auto-builds always use the bare command, since their extra flags (`--mode test`, `--logLevel warn`) would only reach the last command of a compound script (#38) ([@skryukov])
 
 ### Fixed
 
+- Vite commands from the rake tasks and auto build run in `Rails.root`, so they work when Rails is started from another directory (#39) ([@janko])
+- The package manager is detected from lockfiles in `Rails.root`, not the current directory ([@skryukov])
 - Chunks loaded at runtime (dynamic `import()` and their preloads) now come from a string `config.action_controller.asset_host`, like the tags: `rake vite:build` and auto builds pass it to the plugin in `RAILS_VITE_ASSET_HOST`, which prepends it to Vite's `base`. Set the variable yourself for a proc or `%d` `asset_host`. Needs both the updated gem and plugin (#35) ([@skryukov])
 - Allow Vitest's internal Vite server to start in CI. `rails()` and `jsbundling()` now skip the dev-server environment guard and dev server setup under Vitest (#43) ([@cole-robertson])
 - Production tags now link the CSS of chunks an entry imports, including nested and shared chunks, not just the entry's own CSS. Chunk CSS comes before the entry's CSS, matching Vite's HTML output, and CSS shared by several entries in one `vite_tags` call is linked once (#40) ([@madogiwa0124])
-- Watch the base directories of the `refresh` globs, so template and helper changes trigger a full reload on Linux. Vite's watcher disables globbing, so the globs were watched as literal paths that don't exist. On Linux this also stopped change events for the nested view directories ([@olivier-thatch])
+- Watch the base directories of the `refresh` globs, so template and helper changes trigger a full reload on Linux. Vite's watcher disables globbing, so the globs were watched as literal paths that don't exist. On Linux this also stopped change events for the nested view directories (#44) ([@olivier-thatch])
 - Ignore a dev metadata file whose Vite process is gone. After a hard kill (SIGKILL, OOM killer), `vite_tags` no longer link to a dead dev server, and Rails started afterwards runs auto builds again. The plugin now records its hostname, and the pid is only checked when Vite runs on the same host, so Vite in another container still counts as running. Needs both the updated gem and plugin (#48) ([@olivier-thatch])
 
 ## rails_vite@0.2.3 / rails-vite-plugin@0.2.5 - 2026-06-09
@@ -124,6 +127,7 @@ and this project adheres to [Semantic Versioning].
 [@beauraF]: https://github.com/beauraF
 [@cole-robertson]: https://github.com/cole-robertson
 [@madogiwa0124]: https://github.com/madogiwa0124
+[@janko]: https://github.com/janko
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.0.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html

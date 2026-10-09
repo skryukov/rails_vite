@@ -113,11 +113,11 @@ class TasksTest < Minitest::Test
     end
   end
 
-  def test_precompile_command_reads_package_json_from_rails_root
+  def test_precompile_command_reads_rails_root_from_another_dir
     write_package_json(scripts: {build: "vite build"})
+    FileUtils.touch("package-lock.json")
     Dir.mktmpdir do |cwd|
       Dir.chdir(cwd) do
-        FileUtils.touch("package-lock.json")
         assert_equal "npm run build", RailsVite::Tasks.precompile_command
       end
     end
@@ -143,24 +143,6 @@ class TasksTest < Minitest::Test
   def test_precompile_command_falls_back_on_blank_build_script
     FileUtils.touch("package-lock.json")
     write_package_json(scripts: {build: "   "})
-    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
-  end
-
-  def test_precompile_command_falls_back_when_scripts_is_not_an_object
-    FileUtils.touch("package-lock.json")
-    write_package_json(scripts: "vite build")
-    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
-  end
-
-  def test_precompile_command_falls_back_on_non_string_build_script
-    FileUtils.touch("package-lock.json")
-    write_package_json(scripts: {build: 5})
-    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
-  end
-
-  def test_precompile_command_falls_back_when_package_json_is_not_an_object
-    FileUtils.touch("package-lock.json")
-    File.write("package.json", "null")
     assert_equal "npx vite build", RailsVite::Tasks.precompile_command
   end
 

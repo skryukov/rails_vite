@@ -67,11 +67,8 @@ module RailsVite
 
     def package_json_build_script?
       path = Rails.root.join("package.json")
-      return false unless path.exist?
-      package_json = JSON.parse(path.read)
-      script = package_json.dig("scripts", "build") if package_json.is_a?(Hash)
-      script.is_a?(String) && !script.strip.empty?
-    rescue JSON::ParserError, TypeError
+      path.exist? && JSON.parse(path.read).dig("scripts", "build").present?
+    rescue JSON::ParserError
       false
     end
 
@@ -82,7 +79,7 @@ module RailsVite
 
     def tool_determined_by_lockfile
       LOCKFILES.each do |tool_name, files|
-        return tool_name if files.any? { |f| File.exist?(f) }
+        return tool_name if files.any? { |f| Rails.root.join(f).exist? }
       end
       nil
     end
