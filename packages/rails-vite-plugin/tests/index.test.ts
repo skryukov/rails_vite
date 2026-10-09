@@ -467,6 +467,16 @@ describe('rails-vite-plugin', () => {
     expect(() => callConfigureServer(plugin, server)).not.toThrow()
   })
 
+  it('skips dev server setup for Vitest internal server', () => {
+    const plugin = rails({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+    const server = createMockServer()
+    server.config.plugins.push({ name: 'vitest:project' })
+
+    expect(callConfigureServer(plugin, server)).toBeUndefined()
+    expect(server.watcher.add).not.toHaveBeenCalled()
+  })
+
   it('allows config resolution in production environment during serve', () => {
     process.env.RAILS_ENV = 'production'
     const plugin = rails({ input: 'application.js' })

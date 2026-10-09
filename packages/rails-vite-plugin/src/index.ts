@@ -130,9 +130,9 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
     },
 
     configureServer(server) {
-      if (!isVitestServer(server)) {
-        ensureCommandShouldRunInEnvironment('serve', devServerEnv, 'rails-vite-plugin')
-      }
+      if (isVitestServer(server)) return
+
+      ensureCommandShouldRunInEnvironment('serve', devServerEnv, 'rails-vite-plugin')
 
       server.httpServer?.once('listening', () => {
         const address = server.httpServer?.address()

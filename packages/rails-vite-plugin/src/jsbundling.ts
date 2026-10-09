@@ -219,9 +219,9 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
     },
 
     configureServer(server) {
-      if (!isVitestServer(server)) {
-        ensureCommandShouldRunInEnvironment('serve', devServerEnv, 'rails-vite-plugin/jsbundling')
-      }
+      if (isVitestServer(server)) return
+
+      ensureCommandShouldRunInEnvironment('serve', devServerEnv, 'rails-vite-plugin/jsbundling')
 
       let syncTimer: ReturnType<typeof setTimeout> | null = null
 
