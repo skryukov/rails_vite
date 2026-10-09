@@ -196,17 +196,20 @@ export default defineConfig({
 
 ### Custom Vite Executable
 
-By default, Rails tasks invoke the `vite` executable supplied by the detected
-package manager. To use a compatible executable with a different name, such as
-Vite+'s `vp`, configure it in Rails:
+The gem runs Vite through the detected package manager (`npx vite`, `yarn vite`, `pnpm vite`, `bun run vite` or `aube exec vite`). To use a Vite-compatible executable with a different name, set `vite_executable`:
 
 ```ruby
 # config/initializers/rails_vite.rb
 Rails.application.config.rails_vite.vite_executable = "vp"
 ```
 
-This applies to test builds, automatic builds, and `vite:build`. Start the
-development server directly from `Procfile.dev`, for example with `npx vp dev`.
+`rake vite:build`, `assets:precompile`, test builds and auto builds then run `vp build` (for example, `npx vp build`). A package.json `build` script runs as written, so use `vp build` in it too. In your `Procfile.dev`, run the dev server with `vp dev`:
+
+```
+js: npx vp dev
+```
+
+[Vite+](https://viteplus.dev) installs `vp`, not `vite`, so set `vite_executable = "vp"`. Without it, the package manager may still find a plain Vite (installed by another package, or downloaded by `npx`) and build without Vite+. Package managers may also warn that the plugin's `vite` peer dependency is not met, because Vite+ replaces `vite` with its own package and version.
 
 ### Plugin Options
 
