@@ -94,25 +94,6 @@ class TasksTest < Minitest::Test
     assert_equal "pnpm vite build", RailsVite::Tasks.build_command
   end
 
-  def test_custom_vite_executable
-    FileUtils.touch("package-lock.json")
-    config = RailsVite::Config.new
-    config.vite_executable = "vp"
-
-    RailsVite.stub(:config, config) do
-      assert_equal "npx vp", RailsVite::Tasks.dev_command
-      assert_equal "npx vp build", RailsVite::Tasks.build_command
-    end
-  end
-
-  def test_aube_commands
-    FileUtils.touch("aube-lock.yaml")
-    assert_equal "aube install", RailsVite::Tasks.install_command
-    assert_equal "aube add -D vite", RailsVite::Tasks.add_command("vite")
-    assert_equal "aube exec vite", RailsVite::Tasks.dev_command
-    assert_equal "aube exec vite build", RailsVite::Tasks.build_command
-  end
-
   def test_precompile_command_prefers_package_json_build_script
     FileUtils.touch("package-lock.json")
     write_package_json(scripts: {build: "vite build && vite build --ssr"})
@@ -201,6 +182,48 @@ class TasksTest < Minitest::Test
     FileUtils.touch("package-lock.json")
     Rails.stub(:env, ActiveSupport::StringInquirer.new("test")) do
       assert_equal "npx vite build --mode test", RailsVite::Tasks.build_command
+    end
+  end
+
+  def test_aube_commands
+    FileUtils.touch("aube-lock.yaml")
+    assert_equal "aube install", RailsVite::Tasks.install_command
+    assert_equal "aube add -D vite", RailsVite::Tasks.add_command("vite")
+    assert_equal "aube exec vite", RailsVite::Tasks.dev_command
+    assert_equal "aube exec vite build", RailsVite::Tasks.build_command
+  end
+
+  def test_custom_vite_executable_with_aube
+    FileUtils.touch("aube-lock.yaml")
+    config = RailsVite::Config.new
+    config.vite_executable = "vp"
+
+    RailsVite.stub(:config, config) do
+      assert_equal "aube exec vp", RailsVite::Tasks.dev_command
+      assert_equal "aube exec vp build", RailsVite::Tasks.build_command
+    end
+  end
+
+  def test_custom_vite_executable
+    FileUtils.touch("package-lock.json")
+    config = RailsVite::Config.new
+    config.vite_executable = "vp"
+
+    RailsVite.stub(:config, config) do
+      assert_equal "npx vp", RailsVite::Tasks.dev_command
+      assert_equal "npx vp build", RailsVite::Tasks.build_command
+    end
+  end
+
+  def test_custom_vite_executable_keeps_the_bun_path
+    config = RailsVite::Config.new
+    config.vite_executable = "vp"
+    exec = {exec: "/apps/my-vite/bin/bun run"}
+
+    RailsVite.stub(:config, config) do
+      RailsVite::Tasks.stub(:command_for, ->(key) { exec.fetch(key) }) do
+        assert_equal "/apps/my-vite/bin/bun run vp build", RailsVite::Tasks.build_command
+      end
     end
   end
 

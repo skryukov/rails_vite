@@ -5,11 +5,11 @@ module RailsVite
     BUN_CMD = defined?(Bundlebun) ? Bundlebun::Runner.binstub_or_binary_path : "bun"
 
     COMMANDS = {
-      bun: {install: "#{BUN_CMD} install", add: "#{BUN_CMD} add -D", dev: "#{BUN_CMD} run vite", build: "#{BUN_CMD} run vite build", run: "#{BUN_CMD} run"},
-      yarn: {install: "yarn install", add: "yarn add -D", dev: "yarn vite", build: "yarn vite build", run: "yarn run"},
-      pnpm: {install: "pnpm install", add: "pnpm add -D", dev: "pnpm vite", build: "pnpm vite build", run: "pnpm run"},
-      npm: {install: "npm install", add: "npm install -D", dev: "npx vite", build: "npx vite build", run: "npm run"},
-      aube: {install: "aube install", add: "aube add -D", dev: "aube exec vite", build: "aube exec vite build", run: "aube run"}
+      bun: {install: "#{BUN_CMD} install", add: "#{BUN_CMD} add -D", exec: "#{BUN_CMD} run", run: "#{BUN_CMD} run"},
+      yarn: {install: "yarn install", add: "yarn add -D", exec: "yarn", run: "yarn run"},
+      pnpm: {install: "pnpm install", add: "pnpm add -D", exec: "pnpm", run: "pnpm run"},
+      npm: {install: "npm install", add: "npm install -D", exec: "npx", run: "npm run"},
+      aube: {install: "aube install", add: "aube add -D", exec: "aube exec", run: "aube run"}
     }.freeze
 
     LOCKFILES = {
@@ -29,11 +29,11 @@ module RailsVite
     end
 
     def dev_command
-      vite_command_for(:dev)
+      vite_command
     end
 
     def build_command
-      cmd = vite_command_for(:build)
+      cmd = "#{vite_command} build"
       cmd += " --mode test" if Rails.env.test?
       cmd
     end
@@ -49,8 +49,8 @@ module RailsVite
 
     private
 
-    def vite_command_for(key)
-      command_for(key).sub(/\bvite\b/) { RailsVite.config.vite_executable }
+    def vite_command
+      "#{command_for(:exec)} #{RailsVite.config.vite_executable}"
     end
 
     def package_json_build_script?
