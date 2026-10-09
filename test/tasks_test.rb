@@ -65,7 +65,7 @@ class TasksTest < Minitest::Test
 
   def test_dev_command
     FileUtils.touch("yarn.lock")
-    assert_equal "yarn vite", RailsVite::Tasks.dev_command
+    assert_equal "yarn vite dev", RailsVite::Tasks.dev_command
   end
 
   def test_build_command
@@ -82,7 +82,7 @@ class TasksTest < Minitest::Test
     FileUtils.touch("package-lock.json")
     assert_equal "npm install", RailsVite::Tasks.install_command
     assert_equal "npm install -D vite", RailsVite::Tasks.add_command("vite")
-    assert_equal "npx vite", RailsVite::Tasks.dev_command
+    assert_equal "npx vite dev", RailsVite::Tasks.dev_command
     assert_equal "npx vite build", RailsVite::Tasks.build_command
   end
 
@@ -90,7 +90,7 @@ class TasksTest < Minitest::Test
     FileUtils.touch("pnpm-lock.yaml")
     assert_equal "pnpm install", RailsVite::Tasks.install_command
     assert_equal "pnpm add -D vite", RailsVite::Tasks.add_command("vite")
-    assert_equal "pnpm vite", RailsVite::Tasks.dev_command
+    assert_equal "pnpm vite dev", RailsVite::Tasks.dev_command
     assert_equal "pnpm vite build", RailsVite::Tasks.build_command
   end
 
@@ -189,7 +189,7 @@ class TasksTest < Minitest::Test
     FileUtils.touch("aube-lock.yaml")
     assert_equal "aube install", RailsVite::Tasks.install_command
     assert_equal "aube add -D vite", RailsVite::Tasks.add_command("vite")
-    assert_equal "aube exec vite", RailsVite::Tasks.dev_command
+    assert_equal "aube exec vite dev", RailsVite::Tasks.dev_command
     assert_equal "aube exec vite build", RailsVite::Tasks.build_command
   end
 
@@ -199,7 +199,7 @@ class TasksTest < Minitest::Test
     config.vite_executable = "vp"
 
     RailsVite.stub(:config, config) do
-      assert_equal "aube exec vp", RailsVite::Tasks.dev_command
+      assert_equal "aube exec vp dev", RailsVite::Tasks.dev_command
       assert_equal "aube exec vp build", RailsVite::Tasks.build_command
     end
   end
@@ -210,7 +210,7 @@ class TasksTest < Minitest::Test
     config.vite_executable = "vp"
 
     RailsVite.stub(:config, config) do
-      assert_equal "npx vp", RailsVite::Tasks.dev_command
+      assert_equal "npx vp dev", RailsVite::Tasks.dev_command
       assert_equal "npx vp build", RailsVite::Tasks.build_command
     end
   end

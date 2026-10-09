@@ -29,7 +29,7 @@ module RailsVite
     end
 
     def dev_command
-      vite_command
+      "#{vite_command} dev"
     end
 
     def build_command
