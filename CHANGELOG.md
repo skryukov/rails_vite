@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning].
 
 ### Fixed
 
+- Production tags now link the CSS of chunks an entry imports, including nested and shared chunks, not just the entry's own CSS. Chunk CSS comes before the entry's CSS, matching Vite's HTML output, and CSS shared by several entries in one `vite_tags` call is linked once (#40) ([@madogiwa0124])
 - Watch the base directories of the `refresh` globs, so template and helper changes trigger a full reload on Linux. Vite's watcher disables globbing, so the globs were watched as literal paths that don't exist. On Linux this also stopped change events for the nested view directories ([@olivier-thatch])
 
 ## rails_vite@0.2.3 / rails-vite-plugin@0.2.5 - 2026-06-09
@@ -115,6 +116,7 @@ and this project adheres to [Semantic Versioning].
 [@olivier-thatch]: https://github.com/olivier-thatch
 [@beauraF]: https://github.com/beauraF
 [@cole-robertson]: https://github.com/cole-robertson
+[@madogiwa0124]: https://github.com/madogiwa0124
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.0.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
