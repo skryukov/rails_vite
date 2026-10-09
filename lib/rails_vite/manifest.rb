@@ -63,10 +63,11 @@ module RailsVite
     end
 
     def resolve_css(css_files, manifest)
-      css_files.map do |css_file|
-        integrity = manifest.values.find { |e| e["file"] == css_file }&.dig("integrity")
-        {file: css_file, integrity: integrity}
-      end
+      return [] if css_files.empty?
+
+      by_file = {}
+      manifest.each_value { |e| by_file[e["file"]] ||= e }
+      css_files.map { |css_file| {file: css_file, integrity: by_file[css_file]&.dig("integrity")} }
     end
 
     def walk_imports(chunk, seen, manifest, imports, css)
