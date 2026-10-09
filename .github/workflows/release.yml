@@ -50,7 +50,7 @@ jobs:
       - run: npm install -g npm@latest
       - run: test "${GITHUB_REF_NAME#rails-vite-plugin@}" = "$(node -p 'require("./package.json").version')"
       - run: npm install
-      - run: npm publish --tag "$([[ "$GITHUB_REF_NAME" == *-* ]] && echo next || echo latest)"
+      - run: npm publish --tag "$([[ "${GITHUB_REF_NAME#*@}" == *-* ]] && echo next || echo latest)"
       - run: .github/scripts/github-release "$GITHUB_REF_NAME"
         working-directory: .
         continue-on-error: true
