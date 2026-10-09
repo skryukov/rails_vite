@@ -431,6 +431,26 @@ class TagHelperTest < Minitest::Test
     assert_equal 1, vendor_preloads.size, "Shared import should only be preloaded once"
   end
 
+  def test_vite_tags_links_shared_chunk_css_once
+    File.write(@manifest_path, JSON.generate(shared_css_manifest))
+
+    html = vite_tags("app/javascript/application.js", "app/javascript/admin.js")
+
+    assert_equal 1, html.scan("/vite/assets/vendor-11223344.css").size
+    assert_operator html.index("vendor-11223344.css"), :<, html.index("application-x9y8z7w6.css")
+  end
+
+  def test_vite_tags_links_css_on_every_call
+    File.write(@manifest_path, JSON.generate(shared_css_manifest))
+
+    2.times do
+      html = vite_tags("app/javascript/application.js")
+
+      assert_includes html, "/vite/assets/vendor-11223344.css"
+      assert_includes html, "/vite/assets/application-x9y8z7w6.css"
+    end
+  end
+
   # Custom HTML attributes tests
 
   def test_vite_tags_production_with_custom_attributes
@@ -506,5 +526,21 @@ class TagHelperTest < Minitest::Test
     assert_raises(RailsVite::MissingManifestError) do
       vite_tags("app/javascript/application.js")
     end
+  end
+
+  private
+
+  def shared_css_manifest
+    SAMPLE_MANIFEST.merge(
+      "app/javascript/admin.js" => {
+        "file" => "assets/admin-deadbeef.js",
+        "isEntry" => true,
+        "imports" => ["_vendor-b3c4d5e6"]
+      },
+      "_vendor-b3c4d5e6" => {
+        "file" => "assets/vendor-b3c4d5e6.js",
+        "css" => ["assets/vendor-11223344.css"]
+      }
+    )
   end
 end
