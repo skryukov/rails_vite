@@ -5,10 +5,10 @@ module RailsVite
     BUN_CMD = defined?(Bundlebun) ? Bundlebun::Runner.binstub_or_binary_path : "bun"
 
     COMMANDS = {
-      bun: {install: "#{BUN_CMD} install", add: "#{BUN_CMD} add -D", dev: "#{BUN_CMD} run vite", build: "#{BUN_CMD} run vite build"},
-      yarn: {install: "yarn install", add: "yarn add -D", dev: "yarn vite", build: "yarn vite build"},
-      pnpm: {install: "pnpm install", add: "pnpm add -D", dev: "pnpm vite", build: "pnpm vite build"},
-      npm: {install: "npm install", add: "npm install -D", dev: "npx vite", build: "npx vite build"},
+      bun: {install: "#{BUN_CMD} install", add: "#{BUN_CMD} add -D", dev: "#{BUN_CMD} run vite", build: "#{BUN_CMD} run vite build", run: "#{BUN_CMD} run"},
+      yarn: {install: "yarn install", add: "yarn add -D", dev: "yarn vite", build: "yarn vite build", run: "yarn run"},
+      pnpm: {install: "pnpm install", add: "pnpm add -D", dev: "pnpm vite", build: "pnpm vite build", run: "pnpm run"},
+      npm: {install: "npm install", add: "npm install -D", dev: "npx vite", build: "npx vite build", run: "npm run"},
       aube: {install: "aube install", add: "aube add -D", dev: "aube exec vite", build: "aube exec vite build"}
     }.freeze
 
@@ -38,11 +38,26 @@ module RailsVite
       cmd
     end
 
+    def precompile_command
+      return build_command if Rails.env.test? || !package_json_build_script?
+      "#{command_for(:run)} build"
+    end
+
     def tool
       tool_determined_by_lockfile || tool_determined_by_executable
     end
 
     private
+
+    def package_json_build_script?
+      path = Rails.root.join("package.json")
+      return false unless path.exist?
+      package_json = JSON.parse(path.read)
+      script = package_json.dig("scripts", "build") if package_json.is_a?(Hash)
+      script.is_a?(String) && !script.strip.empty?
+    rescue JSON::ParserError, TypeError
+      false
+    end
 
     def command_for(key)
       COMMANDS.dig(tool, key) ||

@@ -607,6 +607,30 @@ describe('rails-vite-plugin/jsbundling', () => {
     ])
   })
 
+  it('watches the base directories of the refresh globs', () => {
+    const plugin = jsbundling({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+    const server = createMockServer()
+    callConfigureServer(plugin, server)
+
+    expect(server.watcher.add).toHaveBeenCalledWith([path.resolve('app/views'), path.resolve('app/helpers')])
+  })
+
+  it('sends a full reload only for files that match the refresh globs', () => {
+    const plugin = jsbundling({ input: 'application.js', refresh: 'config/locales/**/*.yml' })
+    getConfig(plugin, {}, SERVE)
+    const server = createMockServer()
+    callConfigureServer(plugin, server)
+
+    expect(server.watcher.add).toHaveBeenCalledWith([path.resolve('config/locales')])
+
+    server._emitWatcher('change', path.resolve('config/locales/en.rb'))
+    expect(server.hot.send).not.toHaveBeenCalled()
+
+    server._emitWatcher('change', path.resolve('config/locales/admin/en.yml'))
+    expect(server.hot.send).toHaveBeenCalledWith({ type: 'full-reload', path: '*' })
+  })
+
   it('has the correct plugin name', () => {
     const plugin = jsbundling({ input: 'application.js' })
     expect(plugin.name).toBe('rails-vite-jsbundling')
