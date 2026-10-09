@@ -117,6 +117,29 @@ class ManifestTest < Minitest::Test
     assert_equal ["assets/shared.css"], result[:css].map { |c| c[:file] }
   end
 
+  def test_lookup_skips_css_of_dynamic_imports
+    manifest_data = {
+      "entry.js" => {
+        "file" => "assets/entry.js",
+        "isEntry" => true,
+        "css" => ["assets/entry.css"],
+        "dynamicImports" => ["lazy.js"]
+      },
+      "lazy.js" => {
+        "file" => "assets/lazy.js",
+        "isDynamicEntry" => true,
+        "css" => ["assets/lazy.css"]
+      }
+    }
+    File.write(@manifest_path, JSON.generate(manifest_data))
+    manifest = RailsVite::Manifest.new(@manifest_path)
+
+    result = manifest.lookup("entry.js")
+
+    assert_equal ["assets/entry.css"], result[:css].map { |c| c[:file] }
+    assert_empty result[:imports]
+  end
+
   def test_lookup_resolves_nested_imports
     result = @manifest.lookup("app/javascript/application.js")
     import_files = result[:imports].map { |i| i[:file] }
