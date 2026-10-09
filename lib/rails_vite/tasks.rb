@@ -9,7 +9,7 @@ module RailsVite
       yarn: {install: "yarn install", add: "yarn add -D", dev: "yarn vite", build: "yarn vite build", run: "yarn run"},
       pnpm: {install: "pnpm install", add: "pnpm add -D", dev: "pnpm vite", build: "pnpm vite build", run: "pnpm run"},
       npm: {install: "npm install", add: "npm install -D", dev: "npx vite", build: "npx vite build", run: "npm run"},
-      aube: {install: "aube install", add: "aube add -D", dev: "aube exec vite", build: "aube exec vite build"}
+      aube: {install: "aube install", add: "aube add -D", dev: "aube exec vite", build: "aube exec vite build", run: "aube run"}
     }.freeze
 
     LOCKFILES = {

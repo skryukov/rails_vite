@@ -113,7 +113,8 @@ class TasksTest < Minitest::Test
 
     {"yarn.lock" => "yarn run build",
      "pnpm-lock.yaml" => "pnpm run build",
-     "bun.lock" => "bun run build"}.each do |lockfile, expected|
+     "bun.lock" => "bun run build",
+     "aube-lock.yaml" => "aube run build"}.each do |lockfile, expected|
       FileUtils.touch(lockfile)
       assert_equal expected, RailsVite::Tasks.precompile_command
       FileUtils.rm(lockfile)
