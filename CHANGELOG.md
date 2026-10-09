@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning].
 
 ### Fixed
 
-- Chunks loaded at runtime (dynamic `import()` and their preloads) now come from a string `config.action_controller.asset_host`, like the tags: `rake vite:build` and auto builds pass it to the plugin in `RAILS_VITE_ASSET_HOST`, which prepends it to Vite's `base`. Set the variable yourself for a proc `asset_host`. Needs both the updated gem and plugin (#35) ([@skryukov])
+- Chunks loaded at runtime (dynamic `import()` and their preloads) now come from a string `config.action_controller.asset_host`, like the tags: `rake vite:build` and auto builds pass it to the plugin in `RAILS_VITE_ASSET_HOST`, which prepends it to Vite's `base`. Set the variable yourself for a proc or `%d` `asset_host`. Needs both the updated gem and plugin (#35) ([@skryukov])
 - Allow Vitest's internal Vite server to start in CI. `rails()` and `jsbundling()` now skip the dev-server environment guard and dev server setup under Vitest (#43) ([@cole-robertson])
 - Production tags now link the CSS of chunks an entry imports, including nested and shared chunks, not just the entry's own CSS. Chunk CSS comes before the entry's CSS, matching Vite's HTML output, and CSS shared by several entries in one `vite_tags` call is linked once (#40) ([@madogiwa0124])
 - Watch the base directories of the `refresh` globs, so template and helper changes trigger a full reload on Linux. Vite's watcher disables globbing, so the globs were watched as literal paths that don't exist. On Linux this also stopped change events for the nested view directories ([@olivier-thatch])
