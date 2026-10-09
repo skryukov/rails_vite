@@ -15,7 +15,7 @@ import type { InputOption } from './shared/types.js'
 import { ORIGIN_PLACEHOLDER } from './shared/types.js'
 import { resolveInput, detectEntrypointsDir, discoverEntrypointInputs, detectEntrypoint, resolveManifestSourceDir } from './shared/entries.js'
 import { resolveAlias } from './shared/alias.js'
-import { resolveDevServerUrl, isAddressInfo, replaceOriginPlaceholder } from './shared/dev-server.js'
+import { resolveDevServerUrl, isAddressInfo, replaceOriginPlaceholder, resolveAssetHost } from './shared/dev-server.js'
 import { resolveBundlerOptionsKey, getUserBundlerInput } from './shared/bundler-compat.js'
 import { ensureCommandShouldRunInEnvironment, isVitestServer } from './shared/env-guard.js'
 import { refreshPaths, resolveRefreshPaths, resolveRefreshWatchPaths } from './shared/refresh.js'
@@ -81,7 +81,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
       effectiveBuildDir = userBuildDir ?? (process.env.RAILS_VITE_BUILD_DIR || (mode === 'test' ? 'vite-test' : 'vite'))
 
       return {
-        base: userConfig.base ?? (command === 'build' ? `/${effectiveBuildDir}/` : ''),
+        base: userConfig.base ?? (command === 'build' ? `${resolveAssetHost(process.env.RAILS_VITE_ASSET_HOST)}/${effectiveBuildDir}/` : ''),
         publicDir: userConfig.publicDir ?? false,
         build: {
           manifest: userConfig.build?.manifest ?? (isSsrBuild ? false : 'manifest.json'),

@@ -49,7 +49,10 @@ module RailsVite
     # Use with build_command. The plugin builds into this dir, so the gem and
     # the plugin use the same dir for all build modes.
     def build_env
-      {"RAILS_VITE_BUILD_DIR" => RailsVite.config.build_dir}
+      env = {"RAILS_VITE_BUILD_DIR" => RailsVite.config.build_dir}
+      asset_host = Rails.application.config.action_controller.asset_host
+      env["RAILS_VITE_ASSET_HOST"] = asset_host if asset_host.is_a?(String) && asset_host.present? && !asset_host.include?("%d")
+      env
     end
 
     def tool

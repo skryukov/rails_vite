@@ -376,6 +376,12 @@ By default, auto build is enabled in development and test (`Rails.env.local?`).
 
 Note: for parallel test runners, disable auto build and use `rake vite:build` before the suite instead.
 
+## CDN
+
+Tags follow `config.action_controller.asset_host`. `rake vite:build` and auto builds also pass a string `asset_host` to the plugin in `RAILS_VITE_ASSET_HOST`, and the plugin prepends it to Vite's `base`, so chunks Vite loads at runtime (dynamic `import()` and their preloads) come from the same host. With a proc or `%d` `asset_host`, set `RAILS_VITE_ASSET_HOST` in the build's environment yourself (`.env` files are not read for it).
+
+The host is fixed at build time, so build with the same `asset_host` you deploy with. jsbundling mode doesn't use this.
+
 ## Build Mode
 
 `rake vite:build` and auto builds pass `--mode test` to `vite build` in the test environment, and no `--mode` elsewhere. This sets `import.meta.env.MODE` and chooses which `.env.[mode]` files Vite loads. If `MODE === 'test'` means "running under Vitest" in your app, a Rails system-test bundle then includes Vitest-only code. Choose another mode, or no mode:

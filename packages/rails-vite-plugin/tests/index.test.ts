@@ -112,6 +112,7 @@ describe('rails-vite-plugin', () => {
     delete process.env.CI
     delete process.env.RAILS_ENV
     delete process.env.RAILS_VITE_BUILD_DIR
+    delete process.env.RAILS_VITE_ASSET_HOST
     vi.mocked(fs.readFileSync).mockClear()
     vi.mocked(fs.writeFileSync).mockClear()
     vi.mocked(fs.rmSync).mockClear()
@@ -257,6 +258,31 @@ describe('rails-vite-plugin', () => {
     const config = getConfig(plugin, {}, { command: 'build', mode: 'production' })
     expect(config!.base).toBe('/vite-test/')
     expect(config!.build!.outDir).toBe(path.join('public', 'vite-test'))
+  })
+
+  it('prepends RAILS_VITE_ASSET_HOST to base on build', () => {
+    process.env.RAILS_VITE_ASSET_HOST = 'https://cdn.example.com/'
+    const plugin = rails({ input: 'application.js' })
+
+    const config = getConfig(plugin, {}, { command: 'build', mode: 'production' })
+    expect(config!.base).toBe('https://cdn.example.com/vite/')
+    expect(config!.build!.outDir).toBe(path.join('public', 'vite'))
+  })
+
+  it('makes a RAILS_VITE_ASSET_HOST without a scheme protocol-relative', () => {
+    process.env.RAILS_VITE_ASSET_HOST = 'cdn.example.com'
+    const plugin = rails({ input: 'application.js' })
+
+    const config = getConfig(plugin, {}, { command: 'build', mode: 'production' })
+    expect(config!.base).toBe('//cdn.example.com/vite/')
+  })
+
+  it('ignores RAILS_VITE_ASSET_HOST in dev', () => {
+    process.env.RAILS_VITE_ASSET_HOST = 'https://cdn.example.com'
+    const plugin = rails({ input: 'application.js' })
+
+    const config = getConfig(plugin, {}, { command: 'serve', mode: 'development' })
+    expect(config!.base).toBe('')
   })
 
   it('prefers the buildDir option over RAILS_VITE_BUILD_DIR', () => {

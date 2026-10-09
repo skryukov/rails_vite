@@ -278,6 +278,24 @@ class TasksTest < Minitest::Test
     end
   end
 
+  def test_build_env_passes_a_string_asset_host
+    with_asset_host("https://cdn.example.com") do
+      assert_equal "https://cdn.example.com", RailsVite::Tasks.build_env["RAILS_VITE_ASSET_HOST"]
+    end
+  end
+
+  def test_build_env_skips_a_proc_asset_host
+    with_asset_host(->(_source) { "https://cdn.example.com" }) do
+      refute RailsVite::Tasks.build_env.key?("RAILS_VITE_ASSET_HOST")
+    end
+  end
+
+  def test_build_env_skips_a_sharded_asset_host
+    with_asset_host("https://assets%d.example.com") do
+      refute RailsVite::Tasks.build_env.key?("RAILS_VITE_ASSET_HOST")
+    end
+  end
+
   private
 
   def write_package_json(contents)
@@ -292,5 +310,12 @@ class TasksTest < Minitest::Test
     config = RailsVite::Config.new
     options.each { |key, value| config.public_send(:"#{key}=", value) }
     RailsVite.stub(:config, config, &block)
+  end
+
+  def with_asset_host(asset_host)
+    Rails.application.config.action_controller.asset_host = asset_host
+    yield
+  ensure
+    Rails.application.config.action_controller.asset_host = nil
   end
 end
