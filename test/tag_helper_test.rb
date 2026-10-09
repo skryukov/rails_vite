@@ -165,6 +165,24 @@ class TagHelperTest < Minitest::Test
     assert_match %r{src="https://cdn\.example\.com/vite/assets/application-a1b2c3d4\.js"}, html
   end
 
+  def test_vite_asset_url
+    @request = Struct.new(:base_url).new("https://app.example.com")
+
+    assert_equal "https://app.example.com/vite/assets/logo-aabbccdd.png", vite_asset_url("images/logo.png")
+  end
+
+  def test_vite_asset_url_with_asset_host
+    config.asset_host = "https://cdn.example.com"
+
+    assert_equal "https://cdn.example.com/vite/assets/logo-aabbccdd.png", vite_asset_url("images/logo.png")
+  end
+
+  def test_vite_asset_url_dev_mode
+    File.write(File.join(@dir, "rails-vite.json"), '{"url":"http://localhost:5173","sourceDir":"app/javascript"}')
+
+    assert_equal "http://localhost:5173/app/javascript/images/logo.png", vite_asset_url("images/logo.png")
+  end
+
   # sourceDir short name tests
 
   def test_vite_tags_short_name_production

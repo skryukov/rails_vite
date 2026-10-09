@@ -37,6 +37,10 @@ module RailsVite
       end
     end
 
+    def vite_asset_url(name)
+      url_to_asset(vite_asset_path(name))
+    end
+
     def vite_image_tag(name, **options)
       image_tag(vite_asset_path(name), **options)
     end
