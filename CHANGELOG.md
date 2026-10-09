@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning].
 
 ### Changed
 
-- Vite asset URLs are built with Rails' `path_to_asset`, so `asset_host` works as it does for other Rails assets: procs that take the request, `%d` hosts, `config.action_mailer.asset_host` in mailers, and `relative_url_root` (#36) ([@skryukov])
+- Vite asset URLs are built with Rails' `path_to_asset`, so `asset_host` works as it does for other Rails assets: procs that take the request, `%d` hosts and per-controller hosts. Mailers now use `config.action_mailer.asset_host` (or `config.asset_host`) instead of the controller's. With `relative_url_root`, tags now include the prefix; set Vite's `base` to match (#36) ([@skryukov])
 - `rake vite:build` loads the Rails environment first, so `config.rails_vite` settings from initializers (such as `vite_executable`) also apply to it and to `bin/rails test` (#42) ([@cole-robertson])
 - The install generator writes `vite dev` instead of `vite` to `Procfile.dev` (#42) ([@cole-robertson])
 - `vite:build` (and therefore `assets:precompile`) runs the package.json `build` script when one exists, so `"build": "vite build && vite build --ssr"` produces both client and SSR bundles on deploy. Apps without a `build` script keep the bare `vite build`. If package.json already has a `build` script (e.g. one left over from jsbundling-rails), make sure it builds with Vite before upgrading. Test builds and auto-builds always use the bare command, since their extra flags (`--mode test`, `--logLevel warn`) would only reach the last command of a compound script (#38) ([@skryukov])
