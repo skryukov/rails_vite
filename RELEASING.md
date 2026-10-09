@@ -15,6 +15,10 @@ The Release workflow checks that the tag matches the version, publishes with tru
 
 Prereleases use `0.3.0.rc1` for the gem and `0.3.0-rc.1` for npm. npm prereleases go to the `next` dist-tag, and the GitHub release is marked as a prerelease.
 
+For the final release after a release candidate, rename the RC heading to the final versions rather than adding a new one, so the notes keep every change.
+
+Push tags one by one or by name, never with `git push --tags`: GitHub skips workflows when more than three tags are pushed at once.
+
 ## One-time setup
 
 - GitHub: Settings → Environments → `release`: add yourself as a required reviewer and allow only tags matching `rails_vite@*` and `rails-vite-plugin@*`.
