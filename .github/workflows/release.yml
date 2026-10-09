@@ -47,9 +47,8 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      - run: npm install -g npm@latest
       - run: test "${GITHUB_REF_NAME#rails-vite-plugin@}" = "$(node -p 'require("./package.json").version')"
-      - run: npm install
+      - run: npm install --ignore-scripts
       - run: npm publish --tag "$([[ "${GITHUB_REF_NAME#*@}" == *-* ]] && echo next || echo latest)"
       - run: .github/scripts/github-release "$GITHUB_REF_NAME"
         working-directory: .
