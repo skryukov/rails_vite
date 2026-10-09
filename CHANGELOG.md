@@ -12,10 +12,12 @@ and this project adheres to [Semantic Versioning].
 - `refreshDelay` plugin option for `rails()` and `jsbundling()`. It waits the given milliseconds after the last `refresh` change before the full-page reload, and sends one reload for a burst of changes. Use it when Rails sees template changes late, e.g. with `EventedFileUpdateChecker`. Default: `0`, which reloads at once as before (#45) ([@olivier-thatch])
 - The install generator sets `"type": "module"` in package.json — Vite and rails-vite-plugin are ESM-only, and without it Node fails to load `vite.config.ts` under npm/pnpm/yarn. When package.json pins another `type`, the generator emits `vite.config.mts` instead (#38) ([@skryukov])
 - [aube](https://github.com/aubepkg/aube) package manager support: an `aube-lock.yaml` makes the rake tasks, auto build and the install generator use aube, even next to another lockfile left over from `aube import` (#41) ([@beauraF])
-- `RailsVite::Config#vite_executable` for compatible Vite distributions and wrappers whose executable is not named `vite`.
+- `config.rails_vite.vite_executable` sets the executable for `rake vite:build`, test builds and auto builds, so Vite-compatible CLIs with another name, such as Vite+'s `vp`, work. The default is `vite` (#42) ([@cole-robertson])
 
 ### Changed
 
+- `rake vite:build` loads the Rails environment first, so `config.rails_vite` settings from initializers (such as `vite_executable`) also apply to it and to `bin/rails test` (#42) ([@cole-robertson])
+- The install generator writes `vite dev` instead of `vite` to `Procfile.dev` (#42) ([@cole-robertson])
 - `vite:build` (and therefore `assets:precompile`) runs the package.json `build` script when one exists, so `"build": "vite build && vite build --ssr"` produces both client and SSR bundles on deploy. Apps without a `build` script keep the bare `vite build`. If package.json already has a `build` script (e.g. one left over from jsbundling-rails), make sure it builds with Vite before upgrading. Test builds and auto-builds always use the bare command, since their extra flags (`--mode test`, `--logLevel warn`) would only reach the last command of a compound script (#38) ([@skryukov])
 
 ### Fixed
@@ -112,6 +114,7 @@ and this project adheres to [Semantic Versioning].
 [@brodienguyen]: https://github.com/brodienguyen
 [@olivier-thatch]: https://github.com/olivier-thatch
 [@beauraF]: https://github.com/beauraF
+[@cole-robertson]: https://github.com/cole-robertson
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.0.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
