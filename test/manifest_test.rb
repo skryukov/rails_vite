@@ -66,6 +66,33 @@ class ManifestTest < Minitest::Test
     assert_includes css_files, "assets/TemplateBase-ghi000.css"
   end
 
+  def test_lookup_orders_nested_chunk_css_before_entry_css
+    manifest_data = {
+      "app/javascript/application.js" => {
+        "file" => "assets/application.js",
+        "isEntry" => true,
+        "css" => ["assets/application.css"],
+        "imports" => ["_widget.js"]
+      },
+      "_widget.js" => {
+        "file" => "assets/widget.js",
+        "css" => ["assets/widget.css"],
+        "imports" => ["_deep.js"]
+      },
+      "_deep.js" => {
+        "file" => "assets/deep.js",
+        "css" => ["assets/deep.css"]
+      }
+    }
+    File.write(@manifest_path, JSON.generate(manifest_data))
+    manifest = RailsVite::Manifest.new(@manifest_path)
+
+    result = manifest.lookup("app/javascript/application.js")
+
+    assert_equal ["assets/deep.css", "assets/widget.css", "assets/application.css"], result[:css].map { |c| c[:file] }
+    assert_equal ["assets/widget.js", "assets/deep.js"], result[:imports].map { |i| i[:file] }
+  end
+
   def test_lookup_dedupes_css_shared_across_imports
     manifest_data = {
       "entry.js" => {

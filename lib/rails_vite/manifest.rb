@@ -15,8 +15,9 @@ module RailsVite
         raise(MissingEntryError.new(name, @path))
 
       imports = []
-      css = entry.fetch("css", []).dup
+      css = []
       walk_imports(entry, Set.new, manifest, imports, css)
+      css.concat(entry.fetch("css", []))
 
       {
         file: entry["file"],
@@ -78,8 +79,8 @@ module RailsVite
         next unless imported
 
         imports << {file: imported["file"], integrity: imported["integrity"]}
-        css.concat(imported.fetch("css", []))
         walk_imports(imported, seen, manifest, imports, css)
+        css.concat(imported.fetch("css", []))
       end
     end
   end
