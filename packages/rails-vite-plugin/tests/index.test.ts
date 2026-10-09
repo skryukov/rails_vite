@@ -553,6 +553,40 @@ describe('rails-vite-plugin', () => {
     ])
   })
 
+  it('watches the base directories of the refresh globs', () => {
+    const plugin = rails({ input: 'application.js' })
+    getConfig(plugin, {}, SERVE)
+    const server = createMockServer({ httpServer: false })
+    callConfigureServer(plugin, server)
+
+    expect(server.watcher.add).toHaveBeenCalledWith([path.resolve('app/views'), path.resolve('app/helpers')])
+  })
+
+  it('sends a full reload only for files that match the refresh globs', () => {
+    const plugin = rails({ input: 'application.js', refresh: 'config/locales/**/*.yml' })
+    getConfig(plugin, {}, SERVE)
+    const server = createMockServer({ httpServer: false })
+    callConfigureServer(plugin, server)
+
+    expect(server.watcher.add).toHaveBeenCalledWith([path.resolve('config/locales')])
+
+    const onChange = vi.mocked(server.watcher.on).mock.calls.find(([event]) => event === 'change')![1]
+    onChange(path.resolve('config/locales/en.rb'))
+    expect(server.hot.send).not.toHaveBeenCalled()
+
+    onChange(path.resolve('config/locales/admin/en.yml'))
+    expect(server.hot.send).toHaveBeenCalledWith({ type: 'full-reload', path: '*' })
+  })
+
+  it('does not watch refresh paths when refresh is false', () => {
+    const plugin = rails({ input: 'application.js', refresh: false })
+    getConfig(plugin, {}, SERVE)
+    const server = createMockServer({ httpServer: false })
+    callConfigureServer(plugin, server)
+
+    expect(server.watcher.add).not.toHaveBeenCalled()
+  })
+
   it('has the correct plugin name', () => {
     const plugin = rails({ input: 'application.js' })
     expect(plugin.name).toBe('rails-vite')

@@ -5,9 +5,12 @@ class TasksTest < Minitest::Test
     @original_dir = Dir.pwd
     @dir = Dir.mktmpdir
     Dir.chdir(@dir)
+    @original_root = Rails.application.config.root
+    Rails.application.config.root = @dir
   end
 
   def teardown
+    Rails.application.config.root = @original_root
     Dir.chdir(@original_dir)
     FileUtils.rm_rf(@dir)
   end
@@ -37,10 +40,22 @@ class TasksTest < Minitest::Test
     assert_equal :npm, RailsVite::Tasks.tool
   end
 
+  def test_detects_aube_from_aube_lock
+    FileUtils.touch("aube-lock.yaml")
+    assert_equal :aube, RailsVite::Tasks.tool
+  end
+
   def test_bun_lockfile_takes_priority
     FileUtils.touch("bun.lockb")
     FileUtils.touch("yarn.lock")
     assert_equal :bun, RailsVite::Tasks.tool
+  end
+
+  def test_aube_lockfile_takes_priority
+    FileUtils.touch("aube-lock.yaml")
+    FileUtils.touch("bun.lock")
+    FileUtils.touch("pnpm-lock.yaml")
+    assert_equal :aube, RailsVite::Tasks.tool
   end
 
   def test_install_command
@@ -50,7 +65,7 @@ class TasksTest < Minitest::Test
 
   def test_dev_command
     FileUtils.touch("yarn.lock")
-    assert_equal "yarn vite", RailsVite::Tasks.dev_command
+    assert_equal "yarn vite dev", RailsVite::Tasks.dev_command
   end
 
   def test_build_command
@@ -67,7 +82,7 @@ class TasksTest < Minitest::Test
     FileUtils.touch("package-lock.json")
     assert_equal "npm install", RailsVite::Tasks.install_command
     assert_equal "npm install -D vite", RailsVite::Tasks.add_command("vite")
-    assert_equal "npx vite", RailsVite::Tasks.dev_command
+    assert_equal "npx vite dev", RailsVite::Tasks.dev_command
     assert_equal "npx vite build", RailsVite::Tasks.build_command
   end
 
@@ -75,7 +90,146 @@ class TasksTest < Minitest::Test
     FileUtils.touch("pnpm-lock.yaml")
     assert_equal "pnpm install", RailsVite::Tasks.install_command
     assert_equal "pnpm add -D vite", RailsVite::Tasks.add_command("vite")
-    assert_equal "pnpm vite", RailsVite::Tasks.dev_command
+    assert_equal "pnpm vite dev", RailsVite::Tasks.dev_command
     assert_equal "pnpm vite build", RailsVite::Tasks.build_command
+  end
+
+  def test_precompile_command_prefers_package_json_build_script
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {build: "vite build && vite build --ssr"})
+    assert_equal "npm run build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_run_forms_per_package_manager
+    write_package_json(scripts: {build: "vite build"})
+
+    {"yarn.lock" => "yarn run build",
+     "pnpm-lock.yaml" => "pnpm run build",
+     "bun.lock" => "bun run build",
+     "aube-lock.yaml" => "aube run build"}.each do |lockfile, expected|
+      FileUtils.touch(lockfile)
+      assert_equal expected, RailsVite::Tasks.precompile_command
+      FileUtils.rm(lockfile)
+    end
+  end
+
+  def test_precompile_command_reads_package_json_from_rails_root
+    write_package_json(scripts: {build: "vite build"})
+    Dir.mktmpdir do |cwd|
+      Dir.chdir(cwd) do
+        FileUtils.touch("package-lock.json")
+        assert_equal "npm run build", RailsVite::Tasks.precompile_command
+      end
+    end
+  end
+
+  def test_precompile_command_falls_back_without_build_script
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {dev: "vite"})
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_falls_back_without_package_json
+    FileUtils.touch("package-lock.json")
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_falls_back_on_empty_build_script
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {build: ""})
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_falls_back_on_blank_build_script
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {build: "   "})
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_falls_back_when_scripts_is_not_an_object
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: "vite build")
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_falls_back_on_non_string_build_script
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {build: 5})
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_falls_back_when_package_json_is_not_an_object
+    FileUtils.touch("package-lock.json")
+    File.write("package.json", "null")
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_falls_back_on_malformed_package_json
+    FileUtils.touch("package-lock.json")
+    File.write("package.json", "{not json")
+    assert_equal "npx vite build", RailsVite::Tasks.precompile_command
+  end
+
+  def test_precompile_command_ignores_build_script_in_test_env
+    FileUtils.touch("package-lock.json")
+    write_package_json(scripts: {build: "vite build && vite build --ssr"})
+    Rails.stub(:env, ActiveSupport::StringInquirer.new("test")) do
+      assert_equal "npx vite build --mode test", RailsVite::Tasks.precompile_command
+    end
+  end
+
+  def test_build_command_appends_mode_test_in_test_env
+    FileUtils.touch("package-lock.json")
+    Rails.stub(:env, ActiveSupport::StringInquirer.new("test")) do
+      assert_equal "npx vite build --mode test", RailsVite::Tasks.build_command
+    end
+  end
+
+  def test_aube_commands
+    FileUtils.touch("aube-lock.yaml")
+    assert_equal "aube install", RailsVite::Tasks.install_command
+    assert_equal "aube add -D vite", RailsVite::Tasks.add_command("vite")
+    assert_equal "aube exec vite dev", RailsVite::Tasks.dev_command
+    assert_equal "aube exec vite build", RailsVite::Tasks.build_command
+  end
+
+  def test_custom_vite_executable_with_aube
+    FileUtils.touch("aube-lock.yaml")
+    config = RailsVite::Config.new
+    config.vite_executable = "vp"
+
+    RailsVite.stub(:config, config) do
+      assert_equal "aube exec vp dev", RailsVite::Tasks.dev_command
+      assert_equal "aube exec vp build", RailsVite::Tasks.build_command
+    end
+  end
+
+  def test_custom_vite_executable
+    FileUtils.touch("package-lock.json")
+    config = RailsVite::Config.new
+    config.vite_executable = "vp"
+
+    RailsVite.stub(:config, config) do
+      assert_equal "npx vp dev", RailsVite::Tasks.dev_command
+      assert_equal "npx vp build", RailsVite::Tasks.build_command
+    end
+  end
+
+  def test_custom_vite_executable_keeps_the_bun_path
+    config = RailsVite::Config.new
+    config.vite_executable = "vp"
+    exec = {exec: "/apps/my-vite/bin/bun run"}
+
+    RailsVite.stub(:config, config) do
+      RailsVite::Tasks.stub(:command_for, ->(key) { exec.fetch(key) }) do
+        assert_equal "/apps/my-vite/bin/bun run vp build", RailsVite::Tasks.build_command
+      end
+    end
+  end
+
+  private
+
+  def write_package_json(contents)
+    File.write("package.json", JSON.generate(contents))
   end
 end

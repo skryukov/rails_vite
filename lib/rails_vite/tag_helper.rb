@@ -77,6 +77,7 @@ module RailsVite
     def vite_prod_tags(entries, nonce: nil, **options)
       tags = []
       preloaded = Set.new
+      linked_css = Set.new
 
       entries.each do |entry|
         result = RailsVite.manifest.lookup(entry)
@@ -92,6 +93,7 @@ module RailsVite
           nonce: nonce, integrity: result[:integrity], **options)
 
         Array(result[:css]).each do |css_entry|
+          next unless linked_css.add?(css_entry[:file])
           tags << tag.link(rel: "stylesheet", href: vite_asset_url(css_entry[:file]),
             nonce: nonce, **sri_attrs(css_entry[:integrity]), **options)
         end

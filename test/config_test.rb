@@ -17,6 +17,15 @@ class ConfigTest < Minitest::Test
     assert_equal "/vite", @config.asset_prefix
   end
 
+  def test_default_vite_executable
+    assert_equal "vite", @config.vite_executable
+  end
+
+  def test_custom_vite_executable
+    @config.vite_executable = "vp"
+    assert_equal "vp", @config.vite_executable
+  end
+
   def test_custom_dev_meta_path
     @config.dev_meta_path = Rails.root.join("tmp/custom-vite.json")
     assert_equal Rails.root.join("tmp/custom-vite.json"), @config.dev_meta_path
