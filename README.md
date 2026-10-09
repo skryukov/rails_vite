@@ -220,6 +220,7 @@ development server directly from `Procfile.dev`, for example with `npx vp dev`.
 | `buildDir` | `'vite'` | Build output subdirectory inside `public/` |
 | `publicDir` | `'public'` | Public directory |
 | `refresh` | `true` | Paths to watch for full-page reload. `true` watches `app/views/**` and `app/helpers/**` |
+| `refreshDelay` | `0` | Milliseconds to wait after the last `refresh` change before the full-page reload. Changes within the delay send one reload. Set it (e.g. `300`) when Rails sees template changes late, as with `config.file_watcher = ActiveSupport::EventedFileUpdateChecker`, so the reload does not get the old HTML |
 | `prependSourceDirToEntries` | `true` | When `false`, entries are resolved without the `sourceDir` prefix. Set this when Vite's `root` is your `sourceDir` (see below) |
 
 ### Multiple Entry Points
@@ -330,6 +331,14 @@ npx vite build && npx vite build --ssr
 node ssr/ssr.js
 ```
 
+To build the SSR bundle during `assets:precompile`, define a `build` script — `vite:build` runs it when present:
+
+```json
+"scripts": {
+  "build": "vite build && vite build --ssr"
+}
+```
+
 ## Auto Build
 
 When the Vite dev server is not running, rails_vite automatically rebuilds assets on the first request if sources have changed. This is useful for system tests and quick checks without running `bin/dev`.
@@ -384,6 +393,14 @@ Defaults match the plugin defaults — no config needed if you follow convention
 
 `vite:build` hooks into `assets:precompile` and `test:prepare` automatically. Skip with `SKIP_VITE_BUILD=1`.
 
+`vite:build` prefers your package.json `build` script when one exists (like jsbundling-rails), falling back to a bare `vite build`. Test builds always run `vite build --mode test` directly.
+
+### Package Manager
+
+The rake tasks, auto build and the install generator run your JS package manager, picked by lockfile in this order: `aube-lock.yaml`, `bun.lockb` or `bun.lock`, `yarn.lock`, `pnpm-lock.yaml`, `package-lock.json`. Without a lockfile, the first of bun, yarn, pnpm, npm and aube found on `PATH` is used.
+
+[aube](https://github.com/aubepkg/aube) can also use an existing pnpm, yarn, npm or bun lockfile in place, without writing `aube-lock.yaml`. Such a project is detected as the tool that owns the lockfile, so keep that tool installed, or run `aube import` to create `aube-lock.yaml`.
+
 
 ## jsbundling Mode
 
@@ -417,6 +434,7 @@ export default defineConfig({
 | `outputDir` | `'public/assets'` | Public directory for the full Vite build output |
 | `ssr` | — | SSR entry point. String or `{ entry, outDir }` |
 | `refresh` | — | Paths to watch for full-page reload. `true` watches `app/views/**` and `app/helpers/**` |
+| `refreshDelay` | `0` | Milliseconds to wait after the last `refresh` change before the full-page reload. Changes within the delay send one reload. Set it (e.g. `300`) when Rails sees template changes late, as with `config.file_watcher = ActiveSupport::EventedFileUpdateChecker`, so the reload does not get the old HTML |
 | `devMetaFile` | `'tmp/rails-vite.json'` | Dev metadata file path. Set to `false` to disable |
 
 ### Replacing esbuild
