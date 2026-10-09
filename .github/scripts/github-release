@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+tag="$1"
+
+heading=$(awk -v tag="$tag" '/^## / { line = $0; sub(/ - [0-9-]+$/, "", line); n = split(substr(line, 4), tags, " / "); for (i = 1; i <= n; i++) if (tags[i] == tag) { print; exit } }' CHANGELOG.md)
+
+if [ -z "$heading" ]; then
+  echo "::warning::No CHANGELOG section for $tag, skipping GitHub release"
+  exit 0
+fi
+
+title="${heading#\#\# }"
+title="${title% - *}"
+
+if [ "${title%% / *}" != "$tag" ]; then
+  echo "The GitHub release for \"$title\" is created by its first tag"
+  exit 0
+fi
+
+notes=$(awk -v heading="$heading" '$0 == heading { found = 1; next } found && /^## / { exit } found' CHANGELOG.md | sed -E 's/\[@([^]]+)\]/@\1/g')
+
+notes+=$'\n'
+for released in ${title// \/ / }; do
+  case "$released" in
+    rails_vite@*) notes+=$'\n'"**Gem**: https://rubygems.org/gems/rails_vite/versions/${released#*@}" ;;
+    rails-vite-plugin@*) notes+=$'\n'"**npm**: https://www.npmjs.com/package/rails-vite-plugin/v/${released#*@}" ;;
+  esac
+done
+
+prerelease=""
+if [[ "${tag#*@}" =~ [a-z-] ]]; then
+  prerelease="--prerelease"
+fi
+
+gh release create "$tag" --verify-tag --title "$title" --notes "$notes" $prerelease
