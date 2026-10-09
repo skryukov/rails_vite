@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning].
 
 - `refreshDelay` plugin option for `rails()` and `jsbundling()`. It waits the given milliseconds after the last `refresh` change before the full-page reload, and sends one reload for a burst of changes. Use it when Rails sees template changes late, e.g. with `EventedFileUpdateChecker`. Default: `0`, which reloads at once as before (#45) ([@olivier-thatch])
 - The install generator sets `"type": "module"` in package.json — Vite and rails-vite-plugin are ESM-only, and without it Node fails to load `vite.config.ts` under npm/pnpm/yarn. When package.json pins another `type`, the generator emits `vite.config.mts` instead (#38) ([@skryukov])
+- [aube](https://github.com/aubepkg/aube) package manager support: an `aube-lock.yaml` makes the rake tasks, auto build and the install generator use aube, even next to another lockfile left over from `aube import` (#41) ([@beauraF])
 
 ### Changed
 
@@ -109,6 +110,7 @@ and this project adheres to [Semantic Versioning].
 [@skryukov]: https://github.com/skryukov
 [@brodienguyen]: https://github.com/brodienguyen
 [@olivier-thatch]: https://github.com/olivier-thatch
+[@beauraF]: https://github.com/beauraF
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.0.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
