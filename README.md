@@ -89,7 +89,8 @@ Short names are automatically prefixed with `sourceDir` (default: `app/javascrip
 | `vite_javascript_tag(*entries, **options)` | Same as `vite_tags`, appends `.js` to extensionless names |
 | `vite_stylesheet_tag(*entries, **options)` | Same as `vite_tags`, appends `.css` to extensionless names |
 | `vite_typescript_tag(*entries, **options)` | Same as `vite_tags`, appends `.ts` to extensionless names |
-| `vite_asset_path(name)` | Returns the fingerprinted path from the manifest |
+| `vite_asset_path(name)` | Returns the fingerprinted path from the manifest, with `asset_host` applied like Rails' `asset_path` |
+| `vite_asset_url(name)` | Same as `vite_asset_path`, as a full URL like Rails' `asset_url`. In mailers, set `asset_host` to get a full URL |
 | `vite_image_tag(name, **options)` | Image tag with manifest-resolved src |
 
 All tag helpers accept arbitrary HTML attributes:

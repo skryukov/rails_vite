@@ -33,8 +33,12 @@ module RailsVite
       if config.dev_server_running?
         "#{config.dev_server_url}/#{resolved}"
       else
-        vite_asset_url(RailsVite.manifest.path_for(resolved))
+        vite_build_path(RailsVite.manifest.path_for(resolved))
       end
+    end
+
+    def vite_asset_url(name)
+      url_to_asset(vite_asset_path(name))
     end
 
     def vite_image_tag(name, **options)
@@ -85,16 +89,16 @@ module RailsVite
         Array(result[:imports]).each do |import_entry|
           next if preloaded.include?(import_entry[:file])
           preloaded.add(import_entry[:file])
-          tags << tag.link(rel: "modulepreload", href: vite_asset_url(import_entry[:file]),
+          tags << tag.link(rel: "modulepreload", href: vite_build_path(import_entry[:file]),
             nonce: nonce, **sri_attrs(import_entry[:integrity]))
         end
 
-        tags << build_asset_tag(entry, vite_asset_url(result[:file]),
+        tags << build_asset_tag(entry, vite_build_path(result[:file]),
           nonce: nonce, integrity: result[:integrity], **options)
 
         Array(result[:css]).each do |css_entry|
           next unless linked_css.add?(css_entry[:file])
-          tags << tag.link(rel: "stylesheet", href: vite_asset_url(css_entry[:file]),
+          tags << tag.link(rel: "stylesheet", href: vite_build_path(css_entry[:file]),
             nonce: nonce, **sri_attrs(css_entry[:integrity]), **options)
         end
       end
@@ -128,32 +132,12 @@ module RailsVite
       [source_dir, entrypoints_dir, entry].reject { |part| part.nil? || part.empty? }.join("/")
     end
 
-    def vite_asset_url(file)
-      vite_prefix_asset_host("#{RailsVite.config.asset_prefix}/#{file}")
+    def vite_build_path(file)
+      path_to_asset("#{RailsVite.config.asset_prefix}/#{file}")
     end
 
     def css_entry?(entry)
       CSS_EXTENSIONS.match?(entry)
-    end
-
-    def vite_prefix_asset_host(path)
-      host = vite_resolve_asset_host
-      host ? "#{host}#{path}" : path
-    end
-
-    # Memoized per view instance (one per request). Safe for Proc hosts
-    # since each request gets a fresh ActionView::Base instance.
-    def vite_resolve_asset_host
-      return @_vite_asset_host if defined?(@_vite_asset_host)
-
-      @_vite_asset_host = begin
-        case (asset_host = Rails.application.config.action_controller.asset_host)
-        when String then asset_host.chomp("/")
-        when Proc then asset_host.call("")&.chomp("/")
-        end
-      rescue NoMethodError
-        nil
-      end
     end
   end
 end

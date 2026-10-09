@@ -5,6 +5,8 @@ class TagHelperTest < Minitest::Test
   include ActionView::Helpers::AssetTagHelper
   include RailsVite::TagHelper
 
+  attr_reader :config, :request
+
   SAMPLE_MANIFEST = {
     "app/javascript/application.js" => {
       "file" => "assets/application-a1b2c3d4.js",
@@ -43,7 +45,8 @@ class TagHelperTest < Minitest::Test
     config.dev_meta_path = Pathname.new(File.join(@dir, "rails-vite.json"))
 
     @_vite_client_emitted = nil
-    remove_instance_variable(:@_vite_asset_host) if defined?(@_vite_asset_host)
+    @config = ActiveSupport::InheritableOptions.new
+    @request = nil
   end
 
   def teardown
@@ -137,24 +140,47 @@ class TagHelperTest < Minitest::Test
   # Asset host tests
 
   def test_vite_asset_path_with_asset_host
-    Rails.application.config.action_controller.asset_host = "https://cdn.example.com"
+    config.asset_host = "https://cdn.example.com"
 
     path = vite_asset_path("images/logo.png")
 
     assert_equal "https://cdn.example.com/vite/assets/logo-aabbccdd.png", path
-  ensure
-    Rails.application.config.action_controller.asset_host = nil
   end
 
   def test_vite_tags_production_with_asset_host
-    Rails.application.config.action_controller.asset_host = "https://cdn.example.com"
+    config.asset_host = "https://cdn.example.com"
 
     html = vite_tags("app/javascript/application.js")
 
     assert_match %r{src="https://cdn\.example\.com/vite/assets/application-a1b2c3d4\.js"}, html
     assert_match %r{href="https://cdn\.example\.com/vite/assets/application-x9y8z7w6\.css"}, html
-  ensure
-    Rails.application.config.action_controller.asset_host = nil
+  end
+
+  def test_vite_tags_with_request_aware_asset_host
+    @request = Struct.new(:base_url, :ssl?).new("https://app.example.com", true)
+    config.asset_host = ->(_source, request) { request.ssl? ? "https://cdn.example.com" : "http://cdn.example.com" }
+
+    html = vite_tags("app/javascript/application.js")
+
+    assert_match %r{src="https://cdn\.example\.com/vite/assets/application-a1b2c3d4\.js"}, html
+  end
+
+  def test_vite_asset_url
+    @request = Struct.new(:base_url).new("https://app.example.com")
+
+    assert_equal "https://app.example.com/vite/assets/logo-aabbccdd.png", vite_asset_url("images/logo.png")
+  end
+
+  def test_vite_asset_url_with_asset_host
+    config.asset_host = "https://cdn.example.com"
+
+    assert_equal "https://cdn.example.com/vite/assets/logo-aabbccdd.png", vite_asset_url("images/logo.png")
+  end
+
+  def test_vite_asset_url_dev_mode
+    File.write(File.join(@dir, "rails-vite.json"), '{"url":"http://localhost:5173","sourceDir":"app/javascript"}')
+
+    assert_equal "http://localhost:5173/app/javascript/images/logo.png", vite_asset_url("images/logo.png")
   end
 
   # sourceDir short name tests
@@ -390,13 +416,11 @@ class TagHelperTest < Minitest::Test
   # Proc asset host tests
 
   def test_vite_asset_path_with_proc_asset_host
-    Rails.application.config.action_controller.asset_host = ->(_source) { "https://lambda-cdn.example.com" }
+    config.asset_host = ->(_source) { "https://lambda-cdn.example.com" }
 
     path = vite_asset_path("images/logo.png")
 
     assert_equal "https://lambda-cdn.example.com/vite/assets/logo-aabbccdd.png", path
-  ensure
-    Rails.application.config.action_controller.asset_host = nil
   end
 
   # CSS extension tests
