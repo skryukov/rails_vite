@@ -13,11 +13,11 @@ module RailsVite
     }.freeze
 
     LOCKFILES = {
+      aube: %w[aube-lock.yaml],
       bun: %w[bun.lockb bun.lock],
       yarn: %w[yarn.lock],
       pnpm: %w[pnpm-lock.yaml],
-      npm: %w[package-lock.json],
-      aube: %w[aube-lock.yaml]
+      npm: %w[package-lock.json]
     }.freeze
 
     def install_command

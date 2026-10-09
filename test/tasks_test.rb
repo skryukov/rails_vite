@@ -51,6 +51,13 @@ class TasksTest < Minitest::Test
     assert_equal :bun, RailsVite::Tasks.tool
   end
 
+  def test_aube_lockfile_takes_priority
+    FileUtils.touch("aube-lock.yaml")
+    FileUtils.touch("bun.lock")
+    FileUtils.touch("pnpm-lock.yaml")
+    assert_equal :aube, RailsVite::Tasks.tool
+  end
+
   def test_install_command
     FileUtils.touch("yarn.lock")
     assert_equal "yarn install", RailsVite::Tasks.install_command
