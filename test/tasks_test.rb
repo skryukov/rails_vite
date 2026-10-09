@@ -290,6 +290,12 @@ class TasksTest < Minitest::Test
     end
   end
 
+  def test_build_env_skips_a_sharded_asset_host
+    with_asset_host("https://assets%d.example.com") do
+      refute RailsVite::Tasks.build_env.key?("RAILS_VITE_ASSET_HOST")
+    end
+  end
+
   private
 
   def write_package_json(contents)
