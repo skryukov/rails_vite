@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning].
 
 ### Changed
 
+- **Breaking:** `rails-vite-plugin` requires Vite 7 or newer and Node.js 20.19+ or 22.12+, like Vite 7 itself. It failed to load on Vite 5 and 6 already ([@skryukov])
 - Vite asset URLs are built with Rails' `path_to_asset`, so `asset_host` works as it does for other Rails assets: procs that take the request, `%d` hosts and per-controller hosts. Mailers now use `config.action_mailer.asset_host` (or `config.asset_host`) instead of the controller's. With `relative_url_root`, tags now include the prefix; set Vite's `base` to match (#36) ([@skryukov])
 - `rake vite:build` loads the Rails environment first, so `config.rails_vite` settings from initializers (such as `vite_executable`) also apply to it and to `bin/rails test` (#42) ([@cole-robertson])
 - The install generator writes `vite dev` instead of `vite` to `Procfile.dev` (#42) ([@cole-robertson])
