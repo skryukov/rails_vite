@@ -381,6 +381,12 @@ Defaults match the plugin defaults — no config needed if you follow convention
 
 `vite:build` prefers your package.json `build` script when one exists (like jsbundling-rails), falling back to a bare `vite build`. Test builds always run `vite build --mode test` directly.
 
+### Package Manager
+
+The rake tasks, auto build and the install generator run your JS package manager, picked by lockfile in this order: `aube-lock.yaml`, `bun.lockb` or `bun.lock`, `yarn.lock`, `pnpm-lock.yaml`, `package-lock.json`. Without a lockfile, the first of bun, yarn, pnpm, npm and aube found on `PATH` is used.
+
+[aube](https://github.com/aubepkg/aube) can also use an existing pnpm, yarn, npm or bun lockfile in place, without writing `aube-lock.yaml`. Such a project is detected as the tool that owns the lockfile, so keep that tool installed, or run `aube import` to create `aube-lock.yaml`.
+
 
 ## jsbundling Mode
 
