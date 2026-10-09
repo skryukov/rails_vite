@@ -6,8 +6,8 @@ namespace :vite do
   end
 
   desc "Build Vite assets for production"
-  task :build do
-    command = RailsVite::Tasks.build_command
+  task build: :environment do
+    command = RailsVite::Tasks.precompile_command
     system(command, chdir: Rails.root) || raise("rails_vite: Command build failed, ensure `#{command}` runs without errors")
   end
 
