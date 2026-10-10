@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
-## Unreleased
+## rails_vite@0.3.0.rc1 / rails-vite-plugin@0.3.0-rc.1 - 2026-10-10
 
 ### Added
 
