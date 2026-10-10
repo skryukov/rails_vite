@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "rails_vite@*"
+      - "rails-vite-plugin@*"
+
+permissions:
+  contents: read
+
+jobs:
+  gem:
+    if: startsWith(github.ref_name, 'rails_vite@')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+      - run: test "${GITHUB_REF_NAME#rails_vite@}" = "$(ruby -r ./lib/rails_vite/version -e 'print RailsVite::VERSION')"
+      - uses: rubygems/configure-rubygems-credentials@v2.1.0
+      - run: gem build rails_vite.gemspec
+      - run: gem push rails_vite-*.gem
+      - run: .github/scripts/github-release "$GITHUB_REF_NAME"
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  plugin:
+    if: startsWith(github.ref_name, 'rails-vite-plugin@')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/rails-vite-plugin
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - run: test "${GITHUB_REF_NAME#rails-vite-plugin@}" = "$(node -p 'require("./package.json").version')"
+      - run: npm install --ignore-scripts
+      - run: npm publish --tag "$([[ "${GITHUB_REF_NAME#*@}" == *-* ]] && echo next || echo latest)"
+      - run: .github/scripts/github-release "$GITHUB_REF_NAME"
+        working-directory: .
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
