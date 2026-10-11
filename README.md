@@ -533,7 +533,7 @@ In development, jsbundling mode writes `tmp/rails-vite.json` — the same file t
 ```json
 // package.json — replace vite-plugin-ruby with rails-vite-plugin
 - "vite-plugin-ruby": "^5.1.1"
-+ "rails-vite-plugin": "^0.2.0"
++ "rails-vite-plugin": "^0.3.0"
 ```
 
 ### 2. Replace `vite.config.ts`
