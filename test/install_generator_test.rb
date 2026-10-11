@@ -98,4 +98,20 @@ class InstallGeneratorEsmTest < Minitest::Test
 
     refute_match(/postcss\.config\.js/, out)
   end
+
+  def test_warns_about_non_vite_build_script
+    File.write("package.json", %({"scripts":{"build":"esbuild app/javascript/*.* --bundle"}}))
+
+    out, _err = capture_io { @generator.warn_about_build_script }
+
+    assert_match(/esbuild app\/javascript/, out)
+  end
+
+  def test_does_not_warn_about_vite_build_script
+    File.write("package.json", %({"scripts":{"build":"vp build && vp build --ssr"}}))
+
+    out, _err = capture_io { @generator.warn_about_build_script }
+
+    assert_empty out
+  end
 end

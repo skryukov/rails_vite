@@ -28,6 +28,15 @@ module RailsVite
         end
       end
 
+      def warn_about_build_script
+        return unless File.exist?("package.json")
+
+        script = JSON.parse(File.read("package.json")).dig("scripts", "build")
+        return if script.blank? || script.match?(/\b(vite|vp)\b/)
+
+        say %(package.json has a "build" script that assets:precompile will run instead of `vite build`: #{script}. Change it to "vite build" or remove it.), :yellow
+      end
+
       def create_vite_config
         template "vite.config.ts.tt", @esm_package ? "vite.config.ts" : "vite.config.mts"
       end
