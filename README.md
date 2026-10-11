@@ -48,7 +48,7 @@ bundle install
 bin/rails generate rails_vite:install
 ```
 
-This creates `vite.config.ts`, installs dependencies, and updates your layout.
+This creates `vite.config.ts`, installs dependencies, and replaces `javascript_include_tag "application"` and `stylesheet_link_tag "application"` in your layout with `vite_tags`. Other layouts, such as the Rails 8 default, need it by hand: replace `javascript_importmap_tags` with `<%= vite_tags "application" %>`.
 
 Start development:
 
