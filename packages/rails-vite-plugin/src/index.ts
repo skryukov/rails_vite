@@ -116,7 +116,9 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
       if (resolvedConfig.build.ssr) return
 
       const outDir = resolvedConfig.build.outDir
-      const meta: Record<string, unknown> = { sourceDir: manifestSourceDir, buildDir: effectiveBuildDir }
+      // sourceDir is the manifest key prefix (empty when Vite's root is the source dir); sourcePath is the
+      // directory itself, which the gem's auto build watches for changes.
+      const meta: Record<string, unknown> = { sourceDir: manifestSourceDir, sourcePath: sourceDir, buildDir: effectiveBuildDir }
       if (entrypointsDir) meta.entrypointsDir = entrypointsDir
       if (resolvedSsr) meta.ssrOutputDir = ssrOutDir
       fs.writeFileSync(path.join(outDir, 'rails-vite.json'), JSON.stringify(meta))
@@ -142,7 +144,7 @@ export default function rails(options: RailsViteOptions = {}): Plugin {
         if (isAddressInfo(address)) {
           devServerUrl = resolveDevServerUrl(address, resolvedConfig)
 
-          const meta: Record<string, unknown> = { url: devServerUrl, sourceDir: manifestSourceDir, buildDir: effectiveBuildDir, pid: process.pid, hostname: os.hostname() }
+          const meta: Record<string, unknown> = { url: devServerUrl, sourceDir: manifestSourceDir, sourcePath: sourceDir, buildDir: effectiveBuildDir, pid: process.pid, hostname: os.hostname() }
           if (entrypointsDir) meta.entrypointsDir = entrypointsDir
           if (resolvedSsr) meta.ssrOutputDir = ssrOutDir
           if (reactRefresh) meta.reactRefresh = true

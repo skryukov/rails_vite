@@ -56,5 +56,7 @@ describe('root == sourceDir, real build', () => {
     expect(Object.keys(manifest)).toContain('entrypoints/demos.js')
     // The gem must therefore NOT prepend sourceDir.
     expect(meta.sourceDir).toBe('')
+    // Auto build still needs the source directory itself.
+    expect(meta.sourcePath).toBe(root)
   })
 })

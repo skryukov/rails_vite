@@ -267,7 +267,7 @@ export default function jsbundling(options: JsbundlingOptions = {}): Plugin {
 
           // Write dev meta file for progressive upgrade to the rails_vite gem
           if (devMetaPath) {
-            const meta: Record<string, unknown> = { url: devServerUrl, sourceDir: manifestSourceDir, pid: process.pid, hostname: os.hostname() }
+            const meta: Record<string, unknown> = { url: devServerUrl, sourceDir: manifestSourceDir, sourcePath: sourceDir, pid: process.pid, hostname: os.hostname() }
             if (epDir) meta.entrypointsDir = epDir
             if (ssrConfig) meta.ssrOutputDir = ssrConfig.outDir
             if (reactRefresh) meta.reactRefresh = true

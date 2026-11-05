@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## Unreleased
+
+### Fixed
+
+- Auto build no longer walks the whole Rails root when Vite's `root` is the source directory (`prependSourceDirToEntries: false`). `log/` and `tmp/` made assets look stale on every request. The plugin now also writes the source directory to its metadata as `sourcePath`, and auto build watches it. Upgrade `rails-vite-plugin` together with the gem: metadata from older plugin versions has no `sourcePath`, so auto build falls back to `sourceDir` ([@mdesantis])
+
 ## rails_vite@0.3.0 / rails-vite-plugin@0.3.0 - 2026-10-11
 
 ### Added
@@ -128,6 +134,7 @@ and this project adheres to [Semantic Versioning].
 [@cole-robertson]: https://github.com/cole-robertson
 [@madogiwa0124]: https://github.com/madogiwa0124
 [@janko]: https://github.com/janko
+[@mdesantis]: https://github.com/mdesantis
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.0.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
