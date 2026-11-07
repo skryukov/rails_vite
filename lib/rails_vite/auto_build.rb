@@ -84,9 +84,14 @@ module RailsVite
     def stale?
       # The manifest file's mtime is our persisted "last build" timestamp: it
       # lives on disk, so freshness survives process restarts (e.g. a new Rails
-      # process per local system-test run) without any extra state.
-      !File.exist?(@config.manifest_path) ||
-        latest_source_mtime > File.mtime(@config.manifest_path)
+      # process per local system-test run) without any extra state. A missing
+      # manifest is stale, including one another process's build has just
+      # removed: Vite empties the build directory first, so it can vanish
+      # between any check and the read. Stale takes the build lock, which
+      # waits for that build and then checks again.
+      latest_source_mtime > File.mtime(@config.manifest_path)
+    rescue Errno::ENOENT
+      true
     end
 
     def latest_source_mtime

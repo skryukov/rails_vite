@@ -223,6 +223,34 @@ class AutoBuildTest < Minitest::Test
     end
   end
 
+  def test_waits_when_the_manifest_vanishes_under_another_process_build
+    FileUtils.touch(File.join(@source_dir, "app.js"), mtime: Time.now - 10)
+    lock_path = File.join(@dir, "tmp", "rails-vite-build-#{@config.build_dir}.lock")
+    FileUtils.mkdir_p(File.dirname(lock_path))
+    manifest = @manifest_path.to_s
+    # The manifest was there a moment ago; the other process's build has since emptied the directory.
+    exist = File.method(:exist?)
+
+    with_root do
+      built = false
+      stub_build(-> { built = true }) do
+        File.stub(:exist?, ->(path) { path.to_s == manifest || exist.call(path) }) do
+          File.open(lock_path, File::RDWR | File::CREAT) do |other_process|
+            other_process.flock(File::LOCK_EX)
+            request = Thread.new { RailsVite::AutoBuild.new(@app, @config).call({}) }
+            # join returns nil while the request still waits, and re-raises if it failed instead.
+            assert_nil request.join(0.5), "the request should wait for the build, not fail on the missing manifest"
+            write_manifest
+            other_process.flock(File::LOCK_UN)
+            request.join
+          end
+        end
+      end
+
+      refute built
+    end
+  end
+
   def test_instruments_the_build
     events = []
     subscriber = ActiveSupport::Notifications.subscribe("build.rails_vite") { |event| events << event }
