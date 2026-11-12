@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning].
 
 ## Unreleased
 
+### Changed
+
+- `RailsVite.digest` is computed once outside development and test, instead of hashing the manifest file on every call (#57) ([@thomasklemm])
+
 ### Fixed
 
 - Auto build no longer walks the whole Rails root when Vite's `root` is the source directory (`prependSourceDirToEntries: false`). `log/` and `tmp/` made assets look stale on every request. The plugin now also writes the source directory to its metadata as `sourcePath`, and auto build watches it. Upgrade `rails-vite-plugin` together with the gem: metadata from older plugin versions has no `sourcePath`, so auto build falls back to `sourceDir` (#61) ([@mdesantis])
@@ -134,6 +138,7 @@ and this project adheres to [Semantic Versioning].
 [@cole-robertson]: https://github.com/cole-robertson
 [@madogiwa0124]: https://github.com/madogiwa0124
 [@janko]: https://github.com/janko
+[@thomasklemm]: https://github.com/thomasklemm
 [@mdesantis]: https://github.com/mdesantis
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.0.0/
