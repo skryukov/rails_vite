@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning].
 
 ### Fixed
 
+- `bin/rails test` keeps the test environment's `eager_load` setting. The `test:prepare` build loaded the app through Rake's `environment` task, which turned eager loading off for the whole run (#62) ([@skryukov])
 - Auto build no longer walks the whole Rails root when Vite's `root` is the source directory (`prependSourceDirToEntries: false`). `log/` and `tmp/` made assets look stale on every request. The plugin now also writes the source directory to its metadata as `sourcePath`, and auto build watches it. Upgrade `rails-vite-plugin` together with the gem: metadata from older plugin versions has no `sourcePath`, so auto build falls back to `sourceDir` (#61) ([@mdesantis])
 - Auto builds hold a file lock in `tmp/`, so parallel test workers and a server beside a test run no longer build into the same directory at once. The first process to find stale assets builds them, and the others wait and reuse that build ([@brodienguyen])
 
