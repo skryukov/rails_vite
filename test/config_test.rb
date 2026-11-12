@@ -177,6 +177,29 @@ class ConfigTest < Minitest::Test
     end
   end
 
+  def test_default_source_path
+    assert_equal "app/javascript", @config.source_path
+  end
+
+  def test_source_path_from_build_meta
+    with_build_meta(sourceDir: "", sourcePath: "app/frontend") do
+      assert_equal "", @config.source_dir
+      assert_equal "app/frontend", @config.source_path
+    end
+  end
+
+  def test_source_path_falls_back_to_source_dir
+    with_build_meta(sourceDir: "app/frontend") do
+      assert_equal "app/frontend", @config.source_path
+    end
+  end
+
+  def test_empty_source_path_falls_back_to_source_dir
+    with_build_meta(sourceDir: "app/frontend", sourcePath: "") do
+      assert_equal "app/frontend", @config.source_path
+    end
+  end
+
   def test_auto_build_true_in_local_env
     assert Rails.env.local?
     assert @config.auto_build?
@@ -249,6 +272,15 @@ class ConfigTest < Minitest::Test
       meta = File.join(dir, "rails-vite.json")
       File.write(meta, JSON.generate({url: "http://localhost:5173", sourceDir: "app/javascript", **extra}))
       @config.dev_meta_path = Pathname.new(meta)
+      yield
+    end
+  end
+
+  def with_build_meta(**meta)
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "manifest.json"), "{}")
+      File.write(File.join(dir, "rails-vite.json"), JSON.generate(meta))
+      @config.manifest_path = Pathname.new(File.join(dir, "manifest.json"))
       yield
     end
   end

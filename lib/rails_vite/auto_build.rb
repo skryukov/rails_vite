@@ -52,7 +52,7 @@ module RailsVite
 
     def compute_latest_source_mtime
       latest = NEVER
-      source_path = Rails.root.join(@config.source_dir).to_s
+      source_path = Rails.root.join(@config.source_path).to_s
 
       Find.find(source_path, *auto_build_path_matches) do |path|
         next unless File.file?(path)
