@@ -267,6 +267,58 @@ class ManifestTest < Minitest::Test
     assert_equal "no-manifest", manifest.digest
   end
 
+  def test_digest_is_cached_outside_local_environment
+    Rails.stub(:env, ActiveSupport::EnvironmentInquirer.new("production")) do
+      digest = @manifest.digest
+      File.write(@manifest_path, "{}")
+
+      assert_equal digest, @manifest.digest
+      refute_equal Digest::MD5.file(@manifest_path).hexdigest, @manifest.digest
+    end
+  end
+
+  def test_digest_reloads_in_local_environment
+    %w[development test].each do |env|
+      Rails.stub(:env, ActiveSupport::EnvironmentInquirer.new(env)) do
+        File.write(@manifest_path, JSON.generate(SAMPLE_MANIFEST))
+        digest = @manifest.digest
+        File.write(@manifest_path, "{}")
+
+        refute_equal digest, @manifest.digest
+        assert_equal Digest::MD5.hexdigest("{}"), @manifest.digest
+      end
+    end
+  end
+
+  def test_missing_digest_is_not_cached
+    %w[production development test].each do |env|
+      Rails.stub(:env, ActiveSupport::EnvironmentInquirer.new(env)) do
+        File.delete(@manifest_path)
+        manifest = RailsVite::Manifest.new(@manifest_path)
+        assert_equal "no-manifest", manifest.digest
+        File.write(@manifest_path, "{}")
+
+        assert_equal Digest::MD5.hexdigest("{}"), manifest.digest
+      end
+    end
+  end
+
+  def test_reset_clears_cached_digest
+    Rails.stub(:env, ActiveSupport::EnvironmentInquirer.new("production")) do
+      RailsVite.reset!
+      RailsVite.config.manifest_path = @manifest_path
+      digest = RailsVite.digest
+      File.write(@manifest_path, "{}")
+      assert_equal digest, RailsVite.digest
+
+      RailsVite.reset!
+      RailsVite.config.manifest_path = @manifest_path
+      assert_equal Digest::MD5.hexdigest("{}"), RailsVite.digest
+    ensure
+      RailsVite.reset!
+    end
+  end
+
   def test_data_reloads_in_local_environment
     # Rails.env is "test" which is local?, so manifest reloads each time
     assert Rails.env.local?, "Expected test env to be local"

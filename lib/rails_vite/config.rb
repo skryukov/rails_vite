@@ -34,6 +34,10 @@ module RailsVite
       plugin_meta["sourceDir"] || "app/javascript"
     end
 
+    def source_path
+      plugin_meta["sourcePath"].presence || source_dir
+    end
+
     def entrypoints_dir
       plugin_meta["entrypointsDir"]
     end
@@ -44,7 +48,7 @@ module RailsVite
     end
 
     # Paths or globs relative to Rails.root that auto build checks for changes,
-    # in addition to source_dir. Directories are walked recursively.
+    # in addition to source_path. Directories are walked recursively.
     def auto_build_paths
       @auto_build_paths ||= [
         "vite.config.*",

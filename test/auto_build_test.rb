@@ -189,6 +189,19 @@ class AutoBuildTest < Minitest::Test
     refute built?
   end
 
+  def test_watches_source_path_when_source_dir_is_empty
+    # With Vite's root as the source directory, the plugin writes an empty
+    # sourceDir (the manifest key prefix) and the directory as sourcePath.
+    # Backdate the meta file so the log file is the only newer file outside
+    # sourcePath.
+    meta_path = @manifest_path.dirname.join("rails-vite.json")
+    File.write(meta_path, JSON.generate(sourceDir: "", sourcePath: "app/javascript"))
+    File.utime(@base_time, @base_time, meta_path)
+
+    assert built_after_changing("app/javascript/app.js")
+    refute built_after_changing("log/development.log")
+  end
+
   def test_passes_request_through_to_app
     FileUtils.touch(File.join(@source_dir, "app.js"), mtime: Time.now - 10)
     write_manifest(mtime: Time.now)
