@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## Unreleased
+
+### Changed
+
+- `RailsVite.digest` is computed once outside development and test, instead of hashing the manifest file on every call (#57) ([@thomasklemm])
+
 ## rails_vite@0.3.0 / rails-vite-plugin@0.3.0 - 2026-10-11
 
 ### Added
@@ -128,6 +134,7 @@ and this project adheres to [Semantic Versioning].
 [@cole-robertson]: https://github.com/cole-robertson
 [@madogiwa0124]: https://github.com/madogiwa0124
 [@janko]: https://github.com/janko
+[@thomasklemm]: https://github.com/thomasklemm
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.0.0/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
