@@ -18,6 +18,10 @@ namespace :vite do
     RailsVite::AutoBuild.build_if_stale
   end
 
+  task :keep_eager_load do
+    ActiveSupport.on_load(:before_initialize) { config.rake_eager_load = config.eager_load }
+  end
+
   desc "Remove Vite build artifacts"
   task :clobber do
     rm_rf Rails.root.join("public", RailsVite.config.asset_prefix.delete_prefix("/"))
@@ -41,7 +45,7 @@ unless ENV["SKIP_VITE_BUILD"]
 
   %w[test:prepare spec:prepare db:test:prepare].each do |t|
     if Rake::Task.task_defined?(t)
-      Rake::Task[t].enhance(["vite:build"])
+      Rake::Task[t].enhance(["vite:keep_eager_load", "vite:build"])
       break
     end
   end

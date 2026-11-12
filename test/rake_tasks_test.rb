@@ -38,6 +38,15 @@ class RakeTasksTest < Minitest::Test
     main.singleton_class.remove_method(:system)
   end
 
+  def test_test_prepare_keeps_eager_load_before_building
+    Rake.application = Rake::Application.new
+    Rake::Task.define_task(:environment)
+    Rake::Task.define_task("test:prepare")
+    load BUILD_RAKE
+
+    assert_equal %w[vite:keep_eager_load vite:build], Rake::Task["test:prepare"].prerequisites
+  end
+
   def test_auto_build_runs_auto_build_outside_a_request
     called = false
     RailsVite::AutoBuild.stub(:build_if_stale, -> { called = true }) do
