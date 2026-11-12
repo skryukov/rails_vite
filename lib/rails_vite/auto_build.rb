@@ -1,9 +1,21 @@
+require "fileutils"
 require "find"
 
 module RailsVite
   class AutoBuild
     NEVER = Time.at(0).freeze
     SOURCE_CHECK_INTERVAL = 2 # seconds
+
+    # Auto build runs when it is on and no dev server serves the assets.
+    def self.enabled?(config)
+      config.auto_build? && !config.dev_server_running?
+    end
+
+    # Builds stale assets outside a request, as the middleware does on the
+    # first one; for example, before a test runner starts its workers.
+    def self.build_if_stale(config = RailsVite.config)
+      new(nil, config).build_if_stale if enabled?(config)
+    end
 
     def initialize(app, config)
       @app = app
@@ -14,8 +26,14 @@ module RailsVite
     end
 
     def call(env)
-      build! if stale?
+      build_if_stale
       @app.call(env)
+    end
+
+    # Builds the assets when a source is newer than the manifest, or waits for
+    # another process's build. Raises BuildError when the build fails.
+    def build_if_stale
+      build! if stale?
     end
 
     private
@@ -24,20 +42,51 @@ module RailsVite
       @mutex.synchronize do
         return unless stale?
 
-        # Build quietly: vite's per-build summary is noise on every auto-build
-        # (e.g. each local system-test run). Warnings and errors still stream.
-        Rails.logger.error("rails-vite: build failed") unless system(RailsVite::Tasks.build_env, "#{RailsVite::Tasks.build_command} --logLevel warn", chdir: Rails.root)
+        with_build_lock do
+          # Another process may have finished a build while this one waited.
+          return unless stale?
+
+          sources = compute_latest_source_mtime
+          raise BuildError.new(skipped: true) if @failed_sources == sources
+
+          # Build quietly: vite's per-build summary is noise on every auto-build
+          # (e.g. each local system-test run). Warnings and errors still stream.
+          next if system(RailsVite::Tasks.build_env, "#{RailsVite::Tasks.build_command} --logLevel warn", chdir: Rails.root)
+
+          # Remember the failure for these sources, so this process does not
+          # rebuild them until a source changes.
+          @failed_sources = sources
+          raise BuildError
+        end
+        @failed_sources = nil
         @cached_source_mtime = nil
         @source_mtime_checked_at = nil
+      end
+    end
+
+    # Serializes builds across processes (parallel test workers, a server
+    # beside a test run): Vite empties the build directory first, so the lock
+    # lives outside it.
+    def with_build_lock
+      path = Rails.root.join("tmp", "rails-vite-build-#{@config.build_dir}.lock")
+      FileUtils.mkdir_p(path.dirname)
+      File.open(path, File::RDWR | File::CREAT, 0o644) do |lock|
+        lock.flock(File::LOCK_EX)
+        yield
       end
     end
 
     def stale?
       # The manifest file's mtime is our persisted "last build" timestamp: it
       # lives on disk, so freshness survives process restarts (e.g. a new Rails
-      # process per local system-test run) without any extra state.
-      !File.exist?(@config.manifest_path) ||
-        latest_source_mtime > File.mtime(@config.manifest_path)
+      # process per local system-test run) without any extra state. A missing
+      # manifest is stale, including one another process's build has just
+      # removed: Vite empties the build directory first, so it can vanish
+      # between any check and the read. Stale takes the build lock, which
+      # waits for that build and then checks again.
+      latest_source_mtime > File.mtime(@config.manifest_path)
+    rescue Errno::ENOENT
+      true
     end
 
     def latest_source_mtime

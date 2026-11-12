@@ -37,4 +37,13 @@ class RakeTasksTest < Minitest::Test
   ensure
     main.singleton_class.remove_method(:system)
   end
+
+  def test_auto_build_runs_auto_build_outside_a_request
+    called = false
+    RailsVite::AutoBuild.stub(:build_if_stale, -> { called = true }) do
+      Rake::Task["vite:auto_build"].invoke
+    end
+
+    assert called
+  end
 end

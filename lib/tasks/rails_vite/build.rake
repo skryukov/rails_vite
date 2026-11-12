@@ -13,6 +13,11 @@ namespace :vite do
 
   Rake::Task["vite:build"].prereqs << :install unless ENV["SKIP_VITE_INSTALL"]
 
+  desc "Build Vite assets the way auto build does, only if sources changed"
+  task auto_build: :environment do
+    RailsVite::AutoBuild.build_if_stale
+  end
+
   desc "Remove Vite build artifacts"
   task :clobber do
     rm_rf Rails.root.join("public", RailsVite.config.asset_prefix.delete_prefix("/"))

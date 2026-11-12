@@ -1,5 +1,6 @@
 require "test_helper"
 require "rails_vite/auto_build"
+require "timeout"
 
 class AutoBuildTest < Minitest::Test
   def setup
@@ -211,6 +212,181 @@ class AutoBuildTest < Minitest::Test
     end
   end
 
+  def test_waits_for_a_build_in_another_process_and_skips_when_it_left_the_build_fresh
+    FileUtils.touch(File.join(@source_dir, "app.js"), mtime: Time.now - 10)
+    lock_path = File.join(@dir, "tmp", "rails-vite-build-#{@config.build_dir}.lock")
+    FileUtils.mkdir_p(File.dirname(lock_path))
+
+    with_root do
+      built = false
+      stub_build(-> { built = true }) do
+        File.open(lock_path, File::RDWR | File::CREAT) do |other_process|
+          other_process.flock(File::LOCK_EX)
+          request = Thread.new { RailsVite::AutoBuild.new(@app, @config).call({}) }
+          # The request blocks on the lock rather than finishing.
+          Timeout.timeout(5) { Thread.pass until request.status == "sleep" }
+          assert request.alive?, "the request should wait while another process builds"
+          write_manifest
+          other_process.flock(File::LOCK_UN)
+          request.join
+        end
+      end
+
+      refute built
+    end
+  end
+
+  def test_waits_when_the_manifest_vanishes_under_another_process_build
+    FileUtils.touch(File.join(@source_dir, "app.js"), mtime: Time.now - 10)
+    lock_path = File.join(@dir, "tmp", "rails-vite-build-#{@config.build_dir}.lock")
+    FileUtils.mkdir_p(File.dirname(lock_path))
+    manifest = @manifest_path.to_s
+    # The manifest was there a moment ago; the other process's build has since emptied the directory.
+    exist = File.method(:exist?)
+
+    with_root do
+      built = false
+      stub_build(-> { built = true }) do
+        File.stub(:exist?, ->(path) { path.to_s == manifest || exist.call(path) }) do
+          File.open(lock_path, File::RDWR | File::CREAT) do |other_process|
+            other_process.flock(File::LOCK_EX)
+            request = Thread.new { RailsVite::AutoBuild.new(@app, @config).call({}) }
+            # join returns nil while the request still waits, and re-raises if it failed instead.
+            assert_nil request.join(0.5), "the request should wait for the build, not fail on the missing manifest"
+            write_manifest
+            other_process.flock(File::LOCK_UN)
+            request.join
+          end
+        end
+      end
+
+      refute built
+    end
+  end
+
+  def test_does_not_rebuild_failed_sources_until_a_source_changes
+    FileUtils.touch(File.join(@source_dir, "app.js"), mtime: @base_time)
+
+    with_root do
+      builds = 0
+      stub_build(-> {
+        builds += 1
+        false
+      }) do
+        middleware = RailsVite::AutoBuild.new(@app, @config)
+        2.times do
+          assert_raises(RailsVite::BuildError) { middleware.call({}) }
+        end
+        assert_equal 1, builds
+
+        # A source change earns one more build, whose failure is remembered too.
+        FileUtils.touch(File.join(@source_dir, "app.js"), mtime: @base_time + 10)
+        2.times do
+          assert_raises(RailsVite::BuildError) { middleware.call({}) }
+        end
+        assert_equal 2, builds
+
+        # Another process, or this one after a restart, tries once more.
+        assert_raises(RailsVite::BuildError) { RailsVite::AutoBuild.new(@app, @config).call({}) }
+      end
+
+      assert_equal 3, builds
+    end
+  end
+
+  def test_a_skipped_build_says_its_errors_are_not_in_the_output
+    FileUtils.touch(File.join(@source_dir, "app.js"), mtime: @base_time)
+
+    with_root do
+      stub_build(-> { false }) do
+        middleware = RailsVite::AutoBuild.new(@app, @config)
+        first = assert_raises(RailsVite::BuildError) { middleware.call({}) }
+        again = assert_raises(RailsVite::BuildError) { middleware.call({}) }
+
+        assert_includes first.message, "errors are in the output above"
+        assert_includes again.message, "Run `rake vite:build` to see its errors"
+      end
+    end
+  end
+
+  def test_builds_again_after_a_failure_is_fixed
+    FileUtils.touch(File.join(@source_dir, "app.js"), mtime: @base_time)
+
+    with_root do
+      stub_build(-> { false }) do
+        assert_raises(RailsVite::BuildError) { RailsVite::AutoBuild.new(@app, @config).call({}) }
+      end
+
+      FileUtils.touch(File.join(@source_dir, "app.js"), mtime: @base_time + 10)
+      stub_build(-> {
+        write_manifest
+        true
+      }) do
+        status, = RailsVite::AutoBuild.new(@app, @config).call({})
+        assert_equal 200, status
+      end
+    end
+  end
+
+  def test_build_if_stale_builds_without_a_request
+    with_root do
+      built = false
+      stub_build(-> { built = true }) do
+        RailsVite::AutoBuild.build_if_stale(@config)
+      end
+
+      assert built
+    end
+  end
+
+  def test_build_if_stale_skips_fresh_assets
+    FileUtils.touch(File.join(@source_dir, "app.js"), mtime: Time.now - 10)
+    write_manifest(mtime: Time.now)
+
+    with_root do
+      built = false
+      stub_build(-> { built = true }) do
+        RailsVite::AutoBuild.build_if_stale(@config)
+      end
+
+      refute built
+    end
+  end
+
+  def test_build_if_stale_skips_when_auto_build_is_off
+    @config.auto_build = false
+
+    with_root do
+      built = false
+      stub_build(-> { built = true }) do
+        RailsVite::AutoBuild.build_if_stale(@config)
+      end
+
+      refute built
+    end
+  end
+
+  def test_build_if_stale_skips_while_the_dev_server_runs
+    with_root do
+      built = false
+      @config.stub(:dev_server_running?, true) do
+        stub_build(-> { built = true }) do
+          RailsVite::AutoBuild.build_if_stale(@config)
+        end
+      end
+
+      refute built
+    end
+  end
+
+  def test_build_if_stale_raises_when_the_build_fails
+    with_root do
+      stub_build(-> { false }) do
+        assert_raises(RailsVite::BuildError) { RailsVite::AutoBuild.build_if_stale(@config) }
+      end
+    end
+  end
+
   private
 
   def with_root(&block)
@@ -250,8 +426,8 @@ class AutoBuildTest < Minitest::Test
   def stub_build(callback)
     RailsVite::Tasks.stub(:build_command, "true") do
       RailsVite::AutoBuild.define_method(:system) do |*, **|
-        callback.call
-        true
+        # The build succeeds unless the callback returns false.
+        callback.call != false
       end
       yield
     ensure
