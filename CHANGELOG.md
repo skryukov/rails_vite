@@ -5,22 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
-## Unreleased
+## rails_vite@0.4.0 / rails-vite-plugin@0.4.0 - 2026-11-12
 
 ### Added
 
-- `rake vite:auto_build` builds stale assets the way auto build does, so a parallel test runner can build once before it starts its workers. `RailsVite::AutoBuild.build_if_stale` does the same from Ruby. Both do nothing when assets are fresh, and fail with `RailsVite::BuildError` when the build fails ([@brodienguyen])
+- `rake vite:auto_build` builds stale assets the way auto build does, so a parallel test runner can build once before it starts its workers. `RailsVite::AutoBuild.build_if_stale` does the same from Ruby. Both do nothing when assets are fresh, and fail with `RailsVite::BuildError` when the build fails (#59) ([@brodienguyen])
 
 ### Changed
 
 - `RailsVite.digest` is computed once outside development and test, instead of hashing the manifest file on every call (#57) ([@thomasklemm])
-- A failed auto build raises `RailsVite::BuildError` instead of logging and serving the previous assets, and a process does not run it again until a source changes or `rake vite:build` writes a fresh manifest ([@brodienguyen])
+- A failed auto build raises `RailsVite::BuildError` instead of logging and serving the previous assets, and a process does not run it again until a source changes or `rake vite:build` writes a fresh manifest (#59) ([@brodienguyen])
 
 ### Fixed
 
 - `bin/rails test` keeps the test environment's `eager_load` setting. The `test:prepare` build loaded the app through Rake's `environment` task, which turned eager loading off for the whole run (#62) ([@skryukov])
 - Auto build no longer walks the whole Rails root when Vite's `root` is the source directory (`prependSourceDirToEntries: false`). `log/` and `tmp/` made assets look stale on every request. The plugin now also writes the source directory to its metadata as `sourcePath`, and auto build watches it. Upgrade `rails-vite-plugin` together with the gem: metadata from older plugin versions has no `sourcePath`, so auto build falls back to `sourceDir` (#61) ([@mdesantis])
-- Auto builds hold a file lock in `tmp/`, so parallel test workers and a server beside a test run no longer build into the same directory at once. The first process to find stale assets builds them, and the others wait and reuse that build ([@brodienguyen])
+- Auto builds hold a file lock in `tmp/`, so parallel test workers and a server beside a test run no longer build into the same directory at once. The first process to find stale assets builds them, and the others wait and reuse that build (#59) ([@brodienguyen])
 
 ## rails_vite@0.3.0 / rails-vite-plugin@0.3.0 - 2026-10-11
 
