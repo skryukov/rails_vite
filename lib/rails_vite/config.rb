@@ -34,10 +34,6 @@ module RailsVite
       plugin_meta["sourceDir"] || "app/javascript"
     end
 
-    # The source directory auto build watches, relative to Rails.root. Unlike
-    # source_dir (the manifest key prefix), it is not empty when Vite's root is
-    # the source directory. Metadata from older plugin versions has no
-    # sourcePath, so fall back to source_dir.
     def source_path
       plugin_meta["sourcePath"].presence || source_dir
     end
