@@ -264,22 +264,7 @@ class AutoBuildTest < Minitest::Test
     end
   end
 
-  def test_instruments_the_build
-    events = []
-    subscriber = ActiveSupport::Notifications.subscribe("build.rails_vite") { |event| events << event }
-
-    with_root do
-      stub_build(-> { true }) { RailsVite::AutoBuild.new(@app, @config).call({}) }
-      write_manifest(mtime: Time.now + 10)
-      stub_build(-> { true }) { RailsVite::AutoBuild.new(@app, @config).call({}) }
-    end
-
-    assert_equal 1, events.size
-  ensure
-    ActiveSupport::Notifications.unsubscribe(subscriber)
-  end
-
-  def test_does_not_rebuild_failed_sources_in_any_process_until_a_source_changes
+  def test_does_not_rebuild_failed_sources_until_a_source_changes
     FileUtils.touch(File.join(@source_dir, "app.js"), mtime: @base_time)
 
     with_root do
@@ -288,20 +273,24 @@ class AutoBuildTest < Minitest::Test
         builds += 1
         false
       }) do
-        # Each middleware instance stands for a separate process.
+        middleware = RailsVite::AutoBuild.new(@app, @config)
         2.times do
-          assert_raises(RailsVite::BuildError) { RailsVite::AutoBuild.new(@app, @config).call({}) }
+          assert_raises(RailsVite::BuildError) { middleware.call({}) }
         end
         assert_equal 1, builds
 
         # A source change earns one more build, whose failure is remembered too.
         FileUtils.touch(File.join(@source_dir, "app.js"), mtime: @base_time + 10)
         2.times do
-          assert_raises(RailsVite::BuildError) { RailsVite::AutoBuild.new(@app, @config).call({}) }
+          assert_raises(RailsVite::BuildError) { middleware.call({}) }
         end
+        assert_equal 2, builds
+
+        # Another process, or this one after a restart, tries once more.
+        assert_raises(RailsVite::BuildError) { RailsVite::AutoBuild.new(@app, @config).call({}) }
       end
 
-      assert_equal 2, builds
+      assert_equal 3, builds
     end
   end
 
@@ -310,8 +299,9 @@ class AutoBuildTest < Minitest::Test
 
     with_root do
       stub_build(-> { false }) do
-        first = assert_raises(RailsVite::BuildError) { RailsVite::AutoBuild.new(@app, @config).call({}) }
-        again = assert_raises(RailsVite::BuildError) { RailsVite::AutoBuild.new(@app, @config).call({}) }
+        middleware = RailsVite::AutoBuild.new(@app, @config)
+        first = assert_raises(RailsVite::BuildError) { middleware.call({}) }
+        again = assert_raises(RailsVite::BuildError) { middleware.call({}) }
 
         assert_includes first.message, "errors are in the output above"
         assert_includes again.message, "Run `rake vite:build` to see its errors"

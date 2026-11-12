@@ -9,13 +9,12 @@ and this project adheres to [Semantic Versioning].
 
 ### Added
 
-- Auto builds are instrumented as `build.rails_vite` with `ActiveSupport::Notifications`, including time spent waiting for another process's build ([@brodienguyen])
 - `rake vite:auto_build` builds stale assets the way auto build does, so a parallel test runner can build once before it starts its workers. `RailsVite::AutoBuild.build_if_stale` does the same from Ruby. Both do nothing when assets are fresh, and fail with `RailsVite::BuildError` when the build fails ([@brodienguyen])
 
 ### Changed
 
 - `RailsVite.digest` is computed once outside development and test, instead of hashing the manifest file on every call (#57) ([@thomasklemm])
-- A failed auto build raises `RailsVite::BuildError` instead of logging and serving the previous assets, and no process runs it again until a source changes or `rake vite:build` writes a fresh manifest ([@brodienguyen])
+- A failed auto build raises `RailsVite::BuildError` instead of logging and serving the previous assets, and a process does not run it again until a source changes or `rake vite:build` writes a fresh manifest ([@brodienguyen])
 
 ### Fixed
 

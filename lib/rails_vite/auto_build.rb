@@ -33,9 +33,7 @@ module RailsVite
     # Builds the assets when a source is newer than the manifest, or waits for
     # another process's build. Raises BuildError when the build fails.
     def build_if_stale
-      # The event also spans waiting for another process's build, so a
-      # subscriber sees all the time a request or task spent on auto build.
-      ActiveSupport::Notifications.instrument("build.rails_vite") { build! } if stale?
+      build! if stale?
     end
 
     private
@@ -44,26 +42,23 @@ module RailsVite
       @mutex.synchronize do
         return unless stale?
 
-        with_build_lock do |lock|
+        with_build_lock do
           # Another process may have finished a build while this one waited.
           return unless stale?
 
-          sources = compute_latest_source_mtime.to_r.to_s
-          raise BuildError.new(skipped: true) if lock.read == "failed #{sources}"
+          sources = compute_latest_source_mtime
+          raise BuildError.new(skipped: true) if @failed_sources == sources
 
           # Build quietly: vite's per-build summary is noise on every auto-build
           # (e.g. each local system-test run). Warnings and errors still stream.
-          built = system(RailsVite::Tasks.build_env, "#{RailsVite::Tasks.build_command} --logLevel warn", chdir: Rails.root)
-          lock.rewind
-          lock.truncate(0)
-          next if built
+          next if system(RailsVite::Tasks.build_env, "#{RailsVite::Tasks.build_command} --logLevel warn", chdir: Rails.root)
 
-          # Remember the failure for these sources, so no process rebuilds
-          # them until a source changes.
-          lock.write("failed #{sources}")
-          lock.flush
+          # Remember the failure for these sources, so this process does not
+          # rebuild them until a source changes.
+          @failed_sources = sources
           raise BuildError
         end
+        @failed_sources = nil
         @cached_source_mtime = nil
         @source_mtime_checked_at = nil
       end
@@ -71,13 +66,13 @@ module RailsVite
 
     # Serializes builds across processes (parallel test workers, a server
     # beside a test run): Vite empties the build directory first, so the lock
-    # lives outside it. The lock file also records a failed build.
+    # lives outside it.
     def with_build_lock
       path = Rails.root.join("tmp", "rails-vite-build-#{@config.build_dir}.lock")
       FileUtils.mkdir_p(path.dirname)
       File.open(path, File::RDWR | File::CREAT, 0o644) do |lock|
         lock.flock(File::LOCK_EX)
-        yield lock
+        yield
       end
     end
 

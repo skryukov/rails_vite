@@ -14,10 +14,10 @@ module RailsVite
 
   class BuildError < Error
     # skipped: Vite did not run because these sources already failed to build
-    # in an earlier request or process, so its errors are not in this output.
+    # in an earlier request, so its errors are not in this output.
     def initialize(skipped: false)
       message = if skipped
-        "Vite auto build failed earlier for these sources and is not retried until a source changes. Run `rake vite:build` to see its errors."
+        "Vite auto build failed earlier for these sources and is not retried until a source changes or the app restarts. Run `rake vite:build` to see its errors."
       else
         "Vite auto build failed; its errors are in the output above. It retries once a source changes, or run `rake vite:build`."
       end
