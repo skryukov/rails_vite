@@ -32,7 +32,11 @@ module RailsVite
     end
 
     def digest
-      Digest::MD5.file(@path).hexdigest
+      if Rails.env.local?
+        load_digest
+      else
+        @digest ||= load_digest
+      end
     rescue Errno::ENOENT
       NO_MANIFEST_DIGEST
     end
@@ -45,6 +49,10 @@ module RailsVite
       else
         @data ||= load_manifest
       end
+    end
+
+    def load_digest
+      Digest::MD5.file(@path).hexdigest
     end
 
     def load_manifest
