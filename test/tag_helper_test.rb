@@ -5,7 +5,7 @@ class TagHelperTest < Minitest::Test
   include ActionView::Helpers::AssetTagHelper
   include RailsVite::TagHelper
 
-  attr_reader :config, :request
+  attr_reader :config, :request, :response
 
   SAMPLE_MANIFEST = {
     "app/javascript/application.js" => {
@@ -47,11 +47,14 @@ class TagHelperTest < Minitest::Test
     @_vite_client_emitted = nil
     @config = ActiveSupport::InheritableOptions.new
     @request = nil
+    @response = nil
+    @preload_links_header = ActionView::Helpers::AssetTagHelper.preload_links_header
   end
 
   def teardown
     FileUtils.rm_rf(@dir)
     RailsVite.reset!
+    ActionView::Helpers::AssetTagHelper.preload_links_header = @preload_links_header
   end
 
   # Production mode tests
@@ -536,6 +539,69 @@ class TagHelperTest < Minitest::Test
     refute_match %r{crossorigin=}, html
   end
 
+  # Preload Link header tests
+
+  def test_preload_links_header_lists_styles_then_entries_then_imports
+    ActionView::Helpers::AssetTagHelper.preload_links_header = true
+    capture_preload_links
+
+    vite_tags("app/javascript/application.js")
+
+    expected = [
+      "</vite/assets/application-x9y8z7w6.css>; rel=preload; as=style; nopush",
+      "</vite/assets/application-a1b2c3d4.js>; rel=modulepreload; as=script; nopush",
+      "</vite/assets/vendor-b3c4d5e6.js>; rel=modulepreload; as=script; nopush"
+    ].join(",")
+    assert_equal expected, response.headers["link"]
+    assert_equal [{"link" => expected}], @early_hints
+  end
+
+  def test_preload_links_header_matches_tag_crossorigin_integrity_and_nonce
+    ActionView::Helpers::AssetTagHelper.preload_links_header = true
+    capture_preload_links
+    File.write(@manifest_path, JSON.generate(
+      "app/javascript/admin.css" => {"file" => "assets/admin-aabb1122.css", "isEntry" => true, "integrity" => "sha384-css456"}
+    ))
+
+    vite_tags("app/javascript/admin.css", nonce: "abc123")
+
+    assert_equal "</vite/assets/admin-aabb1122.css>; rel=preload; as=style; crossorigin=anonymous; " \
+      "integrity=sha384-css456; nonce=abc123; nopush", response.headers["link"]
+  end
+
+  def test_preload_links_header_disabled_per_call
+    ActionView::Helpers::AssetTagHelper.preload_links_header = true
+    capture_preload_links
+
+    html = vite_javascript_tag("app/javascript/application", preload_links_header: false)
+
+    assert_nil response.headers["link"]
+    assert_empty @early_hints
+    refute_match(/preload_links_header/, html)
+  end
+
+  def test_preload_links_header_follows_rails_setting_unless_enabled_per_call
+    ActionView::Helpers::AssetTagHelper.preload_links_header = false
+    capture_preload_links
+
+    vite_tags("app/javascript/admin.js")
+    assert_nil response.headers["link"]
+
+    vite_tags("app/javascript/admin.js", preload_links_header: true)
+    assert_equal "</vite/assets/admin-deadbeef.js>; rel=modulepreload; as=script; nopush", response.headers["link"]
+  end
+
+  def test_preload_links_header_skipped_in_dev_mode
+    ActionView::Helpers::AssetTagHelper.preload_links_header = true
+    capture_preload_links
+    File.write(File.join(@dir, "rails-vite.json"), '{"url":"http://localhost:5173","sourceDir":"app/javascript"}')
+
+    vite_tags("app/javascript/application.js")
+
+    assert_nil response.headers["link"]
+    assert_empty @early_hints
+  end
+
   # Error tests
 
   def test_missing_entry_raises
@@ -553,6 +619,13 @@ class TagHelperTest < Minitest::Test
   end
 
   private
+
+  def capture_preload_links
+    @early_hints = []
+    env = Rack::MockRequest.env_for("/", "rack.early_hints" => ->(links) { @early_hints << links })
+    @request = ActionDispatch::Request.new(env)
+    @response = ActionDispatch::Response.new
+  end
 
   def shared_css_manifest
     SAMPLE_MANIFEST.merge(

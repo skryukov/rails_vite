@@ -2,14 +2,14 @@ module RailsVite
   module TagHelper
     CSS_EXTENSIONS = /\.(?:css|scss|sass|less|styl|pcss)\z/
 
-    def vite_tags(*entries, nonce: nil, **options)
+    def vite_tags(*entries, nonce: nil, preload_links_header: nil, **options)
       config = RailsVite.config
       resolved = entries.map { |e| resolve_vite_entry(e, config.source_dir, config.entrypoints_dir) }
 
       if config.dev_server_running?
         vite_dev_tags(resolved, config.dev_server_url, nonce: nonce, **options)
       else
-        vite_prod_tags(resolved, nonce: nonce, **options)
+        vite_prod_tags(resolved, nonce: nonce, preload_links_header: preload_links_header, **options)
       end
     end
     alias_method :vite_tag, :vite_tags
@@ -78,40 +78,72 @@ module RailsVite
       safe_join(tags, "\n")
     end
 
-    def vite_prod_tags(entries, nonce: nil, **options)
+    def vite_prod_tags(entries, nonce: nil, preload_links_header: nil, **options)
       tags = []
       preloaded = Set.new
       linked_css = Set.new
+      # Header order: stylesheets block rendering, then entry scripts, then the
+      # chunks they import. Rails stops adding links once the header reaches 1 KB.
+      header = vite_preload_links_header?(preload_links_header)
+      style_links, entry_links, import_links = [], [], [] if header
 
       entries.each do |entry|
         result = RailsVite.manifest.lookup(entry)
 
         Array(result[:imports]).each do |import_entry|
-          next if preloaded.include?(import_entry[:file])
-          preloaded.add(import_entry[:file])
-          tags << tag.link(rel: "modulepreload", href: vite_build_path(import_entry[:file]),
-            nonce: nonce, **sri_attrs(import_entry[:integrity]))
+          next unless preloaded.add?(import_entry[:file])
+          href = vite_build_path(import_entry[:file])
+          attrs = {nonce: nonce, **sri_attrs(import_entry[:integrity])}
+          tags << tag.link(rel: "modulepreload", href: href, **attrs)
+          import_links << vite_preload_link(href, "script", attrs) if header
         end
 
-        tags << build_asset_tag(entry, vite_build_path(result[:file]),
-          nonce: nonce, integrity: result[:integrity], **options)
+        href = vite_build_path(result[:file])
+        attrs = {nonce: nonce, **sri_attrs(result[:integrity]), **options}
+        tags << build_asset_tag(entry, href, **attrs)
+        if header
+          if css_entry?(entry)
+            style_links << vite_preload_link(href, "style", attrs)
+          else
+            entry_links << vite_preload_link(href, "script", attrs)
+          end
+        end
 
         Array(result[:css]).each do |css_entry|
           next unless linked_css.add?(css_entry[:file])
-          tags << tag.link(rel: "stylesheet", href: vite_build_path(css_entry[:file]),
-            nonce: nonce, **sri_attrs(css_entry[:integrity]), **options)
+          href = vite_build_path(css_entry[:file])
+          attrs = {nonce: nonce, **sri_attrs(css_entry[:integrity]), **options}
+          tags << tag.link(rel: "stylesheet", href: href, **attrs)
+          style_links << vite_preload_link(href, "style", attrs) if header
         end
       end
 
+      # Rails' own helper: sends 103 Early Hints and appends to the response's
+      # Link header, in the format of the running Rails version.
+      send_preload_links_header(style_links + entry_links + import_links) if header
       safe_join(tags, "\n")
     end
 
-    def build_asset_tag(entry, url, nonce: nil, integrity: nil, **options)
+    def build_asset_tag(entry, url, **attrs)
       if css_entry?(entry)
-        tag.link(rel: "stylesheet", href: url, nonce: nonce, **sri_attrs(integrity), **options)
+        tag.link(rel: "stylesheet", href: url, **attrs)
       else
-        tag.script(src: url, type: "module", nonce: nonce, **sri_attrs(integrity), **options)
+        tag.script(src: url, type: "module", **attrs)
       end
+    end
+
+    def vite_preload_links_header?(override)
+      override.nil? ? ActionView::Helpers::AssetTagHelper.preload_links_header : override
+    end
+
+    # Mirrors the tag's attributes: a preload whose crossorigin differs from the
+    # tag's makes the browser fetch the asset twice.
+    def vite_preload_link(href, as, attrs)
+      link = "<#{href}>; rel=#{(as == "style") ? "preload" : "modulepreload"}; as=#{as}"
+      link << "; crossorigin=#{attrs[:crossorigin]}" if attrs[:crossorigin]
+      link << "; integrity=#{attrs[:integrity]}" if attrs[:integrity]
+      link << "; nonce=#{attrs[:nonce]}" if attrs[:nonce]
+      link << "; nopush"
     end
 
     def sri_attrs(integrity)

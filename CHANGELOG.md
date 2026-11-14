@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## Unreleased
+
+### Added
+
+- `vite_tags` adds the stylesheets, entry scripts, and imported chunks it emits to the response's `Link` header and sends them as 103 Early Hints, like Rails' `javascript_include_tag`. It follows `config.action_view.preload_links_header` (on with `load_defaults` 6.1+); pass `preload_links_header:` to override it per call. Nothing is sent in dev (#63) ([@olivier-thatch])
+
 ## rails_vite@0.4.0 / rails-vite-plugin@0.4.0 - 2026-11-12
 
 ### Added

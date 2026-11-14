@@ -152,6 +152,22 @@ export default defineConfig({
 
 That's it — `integrity` and `crossorigin="anonymous"` attributes are automatically added to all script, stylesheet, and modulepreload tags when the manifest includes integrity hashes.
 
+### Preload Link Headers
+
+Like Rails' `javascript_include_tag` and `stylesheet_link_tag`, `vite_tags` adds the assets it emits to the response's `Link` header and sends them as [103 Early Hints](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/103) when the server supports it (Puma: `early_hints true`). It follows `config.action_view.preload_links_header`, which `load_defaults` 6.1+ turns on:
+
+```http
+Link: </vite/assets/application-x9y8z7w6.css>; rel=preload; as=style; nopush,</vite/assets/application-a1b2c3d4.js>; rel=modulepreload; as=script; nopush,</vite/assets/vendor-b3c4d5e6.js>; rel=modulepreload; as=script; nopush
+```
+
+Stylesheets come first, then entry scripts, then imported chunks: Rails stops adding links once the header reaches 1 KB. Each link carries the same `crossorigin`, `integrity`, and `nonce` as its tag. Override the setting per call with `preload_links_header:`:
+
+```erb
+<%= vite_tags "admin.js", preload_links_header: false %>
+```
+
+The dev server sends no header.
+
 ### Asset Discovery (Images, Fonts)
 
 Use `import.meta.glob` in your entry point to include assets in the Vite manifest:
